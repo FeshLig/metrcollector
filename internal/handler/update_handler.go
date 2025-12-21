@@ -25,7 +25,16 @@ func (h *UpdateHandler) UpdatePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) != 4 || parts[0] != "update" {
+	if len(parts) < 1 || parts[0] != "update" {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	} else if len(parts) < 2 {
+		http.Error(w, "invalid path", http.StatusBadRequest)
+		return
+	} else if len(parts) < 3 {
+		http.Error(w, "invalid path", http.StatusNotFound)
+		return
+	} else if len(parts) < 4 {
 		http.Error(w, "invalid path", http.StatusBadRequest)
 		return
 	}
