@@ -20,7 +20,7 @@ func NewUpdateHandler(g *GaugeHandler, c *CounterHandler) *UpdateHandler {
 
 func (h *UpdateHandler) UpdatePage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "method not allowed", http.StatusBadRequest)
 		return
 	}
 
