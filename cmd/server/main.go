@@ -1,45 +1,25 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/FeshLig/metrcollector/internal/handler"
-	"github.com/FeshLig/metrcollector/internal/metric"
+	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
 func main() {
 
-	memStorage := metric.NewMemStorage()
+	memStorage := repository.NewMemStorage()
 	mux := http.NewServeMux()
 
-	gaugeHandler := handler.NewGaugeHandler(memStorage.GetGauges())
-	counterHandler := handler.NewCounterHandler(memStorage.GetCounters())
+	gaugeHandler := handler.NewGaugeHandler(memStorage)
+	counterHandler := handler.NewCounterHandler(memStorage)
 
 	updateHandler := handler.NewUpdateHandler(gaugeHandler, counterHandler)
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain")
-
-		fmt.Fprintln(w, "GAUGES:")
-		for name, gauge := range memStorage.GetGauges() {
-			fmt.Fprintf(w, "%s = %f\n", name, gauge)
-		}
-
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, "COUNTERS:")
-		for name, counter := range memStorage.GetCounters() {
-			fmt.Fprintf(w, "%s = %d\n", name, counter)
-		}
-
-	})
+	rootHandler := handler.NewRootHandler(memStorage)
 
 	mux.HandleFunc("/update/", http.HandlerFunc(updateHandler.UpdatePage))
+	mux.HandleFunc("/", http.HandlerFunc(rootHandler.RootPage))
 
 	err := http.ListenAndServe(`localhost:8080`, mux)
 

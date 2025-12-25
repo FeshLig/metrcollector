@@ -1,15 +1,15 @@
 package handler
 
-import (
-	"github.com/FeshLig/metrcollector/internal/metric"
-)
+type GaugeStorage interface {
+	SetGauge(name string, value float64)
+}
 
 // можно заменить структуру на просто тип мапы
 type GaugeHandler struct {
-	storage metric.Gauges
+	storage GaugeStorage
 }
 
-func NewGaugeHandler(s metric.Gauges) *GaugeHandler {
+func NewGaugeHandler(s GaugeStorage) *GaugeHandler {
 	return &GaugeHandler{storage: s}
 }
 

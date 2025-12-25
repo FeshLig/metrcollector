@@ -2,10 +2,11 @@ package metric
 
 type Counter int64
 
-type Counters map[string]Counter
+// type Counters map[string]Counter
 
-func (s Counters) AddCounter(name string, value int64) {
-	c := s[name]
+func (s Counter) AddCounter(value int64) Counter {
+	c := s
 	c += Counter(value)
-	s[name] = c
+	s = c
+	return s
 }

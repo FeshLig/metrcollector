@@ -2,8 +2,9 @@ package metric
 
 type Gauge float64
 
-type Gauges map[string]Gauge
+// type Gauges map[string]Gauge
 
-func (s Gauges) SetGauge(name string, value float64) {
-	s[name] = Gauge(value)
+func (s Gauge) SetGauge(value float64) Gauge {
+	s = Gauge(value)
+	return s
 }

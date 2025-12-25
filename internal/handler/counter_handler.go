@@ -1,15 +1,14 @@
 package handler
 
-import (
-	"github.com/FeshLig/metrcollector/internal/metric"
-)
-
-// можно заменить структуру на просто тип мапы
-type CounterHandler struct {
-	storage metric.Counters
+type CounterStorage interface {
+	AddCounter(name string, delta int64)
 }
 
-func NewCounterHandler(s metric.Counters) *CounterHandler {
+type CounterHandler struct {
+	storage CounterStorage
+}
+
+func NewCounterHandler(s CounterStorage) *CounterHandler {
 	return &CounterHandler{storage: s}
 }
 
