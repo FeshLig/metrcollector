@@ -8,7 +8,13 @@ import (
 )
 
 func main() {
+	Run()
+}
 
+// TODO:
+// Добавить возврат ошибки
+// Убрать панику
+func Run() {
 	memStorage := repository.NewMemStorage()
 	mux := http.NewServeMux()
 
