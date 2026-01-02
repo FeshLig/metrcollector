@@ -1,10 +1,12 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/FeshLig/metrcollector/internal/metric"
+	"github.com/gin-gonic/gin"
 )
 
 type SnapshotMetrics interface {
@@ -22,22 +24,26 @@ func NewRootHandler(m SnapshotMetrics) *RootHandler {
 	}
 }
 
-func (h *RootHandler) RootPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusBadRequest)
-		return
+func (h *RootHandler) RootPage(c *gin.Context) {
+
+	gauges := h.metrics.SnapshotGauges()
+	counters := h.metrics.SnapshotCounters()
+
+	var str strings.Builder
+
+	for name, value := range gauges {
+		str.WriteString(name)
+		str.WriteString(": ")
+		str.WriteString(strconv.FormatFloat(float64(value), 'f', 6, 64))
+		str.WriteByte('\n')
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-
-	fmt.Fprintln(w, "GAUGES:")
-	for name, gauge := range h.metrics.SnapshotGauges() {
-		fmt.Fprintf(w, "%s = %f\n", name, gauge)
+	for name, value := range counters {
+		str.WriteString(name)
+		str.WriteString(": ")
+		str.WriteString(strconv.FormatInt(int64(value), 10))
+		str.WriteByte('\n')
 	}
 
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "COUNTERS:")
-	for name, counter := range h.metrics.SnapshotCounters() {
-		fmt.Fprintf(w, "%s = %d\n", name, counter)
-	}
+	c.String(http.StatusOK, str.String())
 }

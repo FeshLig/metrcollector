@@ -1,10 +1,9 @@
 package main
 
 import (
-	"net/http"
-
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/repository"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -15,18 +14,17 @@ func main() {
 // Добавить возврат ошибки
 // Убрать панику
 func Run() {
-	memStorage := repository.NewMemStorage()
-	mux := http.NewServeMux()
 
+	r := gin.Default()
+
+	memStorage := repository.NewMemStorage()
 	updateHandler := handler.NewUpdateHandler(memStorage)
 	rootHandler := handler.NewRootHandler(memStorage)
+	valueHandler := handler.NewValueHandler(memStorage)
 
-	mux.HandleFunc("/update/", http.HandlerFunc(updateHandler.UpdatePage))
-	mux.HandleFunc("/", http.HandlerFunc(rootHandler.RootPage))
+	r.GET("/", rootHandler.RootPage)
+	r.POST("/update/:type/:name/:value/", updateHandler.UpdatePage)
+	r.GET("/value/:type/:name/", valueHandler.ValuePage)
 
-	err := http.ListenAndServe(`localhost:8080`, mux)
-
-	if err != nil {
-		panic(err)
-	}
+	r.Run(":8080")
 }

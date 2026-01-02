@@ -3,7 +3,8 @@ package handler
 import (
 	"net/http"
 	"strconv"
-	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type UpdateMetrics interface {
@@ -21,52 +22,33 @@ func NewUpdateHandler(u UpdateMetrics) *UpdateHandler {
 	}
 }
 
-func (h *UpdateHandler) UpdatePage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusBadRequest)
-		return
-	}
+func (h *UpdateHandler) UpdatePage(c *gin.Context) {
 
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) < 1 || parts[0] != "update" {
-		http.Error(w, "invalid path", http.StatusBadRequest)
-		return
-	} else if len(parts) < 2 {
-		http.Error(w, "invalid path", http.StatusBadRequest)
-		return
-	} else if len(parts) < 3 {
-		http.Error(w, "invalid path", http.StatusNotFound)
-		return
-	} else if len(parts) < 4 {
-		http.Error(w, "invalid path", http.StatusBadRequest)
-		return
-	}
-
-	metricType := parts[1]
-	name := parts[2]
-	valueStr := parts[3]
-
-	if strings.TrimSpace(name) == "" {
-		http.Error(w, "empty name", http.StatusNotFound)
-	}
+	metricType := c.Param("type")
+	name := c.Param("name")
+	valueStr := c.Param("value")
 
 	switch metricType {
 	case "gauge":
 		value, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
-			http.Error(w, "wrong gauge value", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "wrong gauge value")
+			return
 		}
 		h.storage.SetGauge(name, value)
 
 	case "counter":
 		value, err := strconv.ParseInt(valueStr, 10, 64)
 		if err != nil {
-			http.Error(w, "wrong counter value", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "wrong counter value")
+			return
 		}
 		h.storage.AddCounter(name, value)
 	default:
-		http.Error(w, "unknown metric type", http.StatusBadRequest)
+		c.String(http.StatusBadRequest, "unknown metric type")
 		return
 	}
+
+	c.Status(http.StatusOK)
 
 }
