@@ -18,10 +18,7 @@ func Run() {
 	memStorage := repository.NewMemStorage()
 	mux := http.NewServeMux()
 
-	gaugeHandler := handler.NewGaugeHandler(memStorage)
-	counterHandler := handler.NewCounterHandler(memStorage)
-
-	updateHandler := handler.NewUpdateHandler(gaugeHandler, counterHandler)
+	updateHandler := handler.NewUpdateHandler(memStorage)
 	rootHandler := handler.NewRootHandler(memStorage)
 
 	mux.HandleFunc("/update/", http.HandlerFunc(updateHandler.UpdatePage))

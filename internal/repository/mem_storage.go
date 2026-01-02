@@ -6,11 +6,6 @@ import (
 	"github.com/FeshLig/metrcollector/internal/metric"
 )
 
-type Storage interface {
-	SnapshotGauges() map[string]metric.Gauge
-	SnapshotCounters() map[string]metric.Counter
-}
-
 // возможно нужно добавить потокобезопасность, т.к. одновременно может происходить и копия и запись
 type MemStorage struct {
 	mu       sync.Mutex

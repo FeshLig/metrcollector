@@ -5,17 +5,16 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/FeshLig/metrcollector/internal/repository"
+	"github.com/FeshLig/metrcollector/internal/handler"
 )
 
 type MetricsCollector struct {
-	storage *repository.MemStorage
+	storage handler.UpdateMetrics
 }
 
-func NewMetricCollector(memStorage *repository.MemStorage) *MetricsCollector {
-	storage := memStorage
+func NewMetricCollector(memStorage handler.UpdateMetrics) *MetricsCollector {
 	return &MetricsCollector{
-		storage: storage,
+		storage: memStorage,
 	}
 }
 

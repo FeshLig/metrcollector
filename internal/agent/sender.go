@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/FeshLig/metrcollector/internal/repository"
+	"github.com/FeshLig/metrcollector/internal/handler"
 )
 
 type MetricsSender interface {
@@ -45,7 +45,7 @@ func (h *HTTPSender) Send(metricType, name, value string) error {
 	return nil
 }
 
-func (h *HTTPSender) SendMetrics(storage *repository.MemStorage) {
+func (h *HTTPSender) SendMetrics(storage handler.SnapshotMetrics) {
 
 	var strValue string
 
