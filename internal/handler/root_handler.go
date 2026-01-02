@@ -4,16 +4,21 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/FeshLig/metrcollector/internal/repository"
+	"github.com/FeshLig/metrcollector/internal/metric"
 )
 
-type RootHandler struct {
-	memStorage *repository.MemStorage
+type SnapshotMetrics interface {
+	SnapshotGauges() map[string]metric.Gauge
+	SnapshotCounters() map[string]metric.Counter
 }
 
-func NewRootHandler(m *repository.MemStorage) *RootHandler {
+type RootHandler struct {
+	metrics SnapshotMetrics
+}
+
+func NewRootHandler(m SnapshotMetrics) *RootHandler {
 	return &RootHandler{
-		memStorage: m,
+		metrics: m,
 	}
 }
 
@@ -26,13 +31,13 @@ func (h *RootHandler) RootPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 
 	fmt.Fprintln(w, "GAUGES:")
-	for name, gauge := range h.memStorage.SnapshotGauges() {
+	for name, gauge := range h.metrics.SnapshotGauges() {
 		fmt.Fprintf(w, "%s = %f\n", name, gauge)
 	}
 
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "COUNTERS:")
-	for name, counter := range h.memStorage.SnapshotCounters() {
+	for name, counter := range h.metrics.SnapshotCounters() {
 		fmt.Fprintf(w, "%s = %d\n", name, counter)
 	}
 }

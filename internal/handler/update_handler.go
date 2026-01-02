@@ -6,15 +6,18 @@ import (
 	"strings"
 )
 
-type UpdateHandler struct {
-	gauge   *GaugeHandler
-	counter *CounterHandler
+type UpdateMetrics interface {
+	SetGauge(name string, value float64)
+	AddCounter(name string, delta int64)
 }
 
-func NewUpdateHandler(g *GaugeHandler, c *CounterHandler) *UpdateHandler {
+type UpdateHandler struct {
+	storage UpdateMetrics
+}
+
+func NewUpdateHandler(u UpdateMetrics) *UpdateHandler {
 	return &UpdateHandler{
-		gauge:   g,
-		counter: c,
+		storage: u,
 	}
 }
 
@@ -53,14 +56,14 @@ func (h *UpdateHandler) UpdatePage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, "wrong gauge value", http.StatusBadRequest)
 		}
-		h.gauge.Update(name, value)
+		h.storage.SetGauge(name, value)
 
 	case "counter":
 		value, err := strconv.ParseInt(valueStr, 10, 64)
 		if err != nil {
 			http.Error(w, "wrong counter value", http.StatusBadRequest)
 		}
-		h.counter.Update(name, value)
+		h.storage.AddCounter(name, value)
 	default:
 		http.Error(w, "unknown metric type", http.StatusBadRequest)
 		return
