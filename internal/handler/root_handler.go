@@ -34,7 +34,7 @@ func (h *RootHandler) RootPage(c *gin.Context) {
 	for name, value := range gauges {
 		str.WriteString(name)
 		str.WriteString(": ")
-		str.WriteString(strconv.FormatFloat(float64(value), 'f', 6, 64))
+		str.WriteString(strconv.FormatFloat(float64(value), 'f', -1, 64))
 		str.WriteByte('\n')
 	}
 

@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,7 +30,7 @@ func (h *ValueHandler) ValuePage(c *gin.Context) {
 			c.String(http.StatusNotFound, "unknown gauge name")
 			return
 		}
-		c.String(http.StatusOK, fmt.Sprintf("%f", float64(value)))
+		c.String(http.StatusOK, strconv.FormatFloat(float64(value), 'f', -1, 64))
 	case "counter":
 		counters := h.metrics.SnapshotCounters()
 		value, ok := counters[name]
@@ -38,7 +38,7 @@ func (h *ValueHandler) ValuePage(c *gin.Context) {
 			c.String(http.StatusNotFound, "unknown counter name")
 			return
 		}
-		c.String(http.StatusOK, fmt.Sprintf("%d", int64(value)))
+		c.String(http.StatusOK, strconv.FormatInt(int64(value), 10))
 	default:
 		c.String(http.StatusBadRequest, "unknown metric type")
 		return
