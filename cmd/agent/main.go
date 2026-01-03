@@ -9,26 +9,26 @@ import (
 )
 
 func main() {
-	pollInterval := time.Duration(2)
-	reportInterval := time.Duration(10)
+
+	flags := ParseFlags()
 
 	storage := repository.NewMemStorage()
 	client := &http.Client{}
 
 	collector := agent.NewMetricCollector(storage)
-	sender := agent.NewSender("http://localhost:8080", client)
+	sender := agent.NewSender(flags.address.String(), client)
 
 	go func() {
 		for {
 			collector.CollectMetrics()
-			time.Sleep(pollInterval * time.Second)
+			time.Sleep(flags.pollInterval * time.Second)
 		}
 	}()
 
 	go func() {
 		for {
 			sender.SendMetrics(storage)
-			time.Sleep(reportInterval * time.Second)
+			time.Sleep(flags.reportInterval * time.Second)
 		}
 	}()
 

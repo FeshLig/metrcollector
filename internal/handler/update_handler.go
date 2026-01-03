@@ -28,6 +28,7 @@ func (h *UpdateHandler) UpdatePage(c *gin.Context) {
 	name := c.Param("name")
 	valueStr := c.Param("value")
 
+	// TODO: Возможно перенести в сервис
 	switch metricType {
 	case "gauge":
 		value, err := strconv.ParseFloat(valueStr, 64)

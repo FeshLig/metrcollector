@@ -15,6 +15,8 @@ func main() {
 // Убрать панику
 func Run() {
 
+	flags := ParseFlags()
+
 	r := gin.Default()
 
 	memStorage := repository.NewMemStorage()
@@ -26,5 +28,5 @@ func Run() {
 	r.POST("/update/:type/:name/:value/", updateHandler.UpdatePage)
 	r.GET("/value/:type/:name/", valueHandler.ValuePage)
 
-	r.Run(":8080")
+	r.Run(flags.address.String())
 }
