@@ -16,7 +16,7 @@ func main() {
 	client := &http.Client{}
 
 	collector := agent.NewMetricCollector(storage)
-	sender := agent.NewSender(flags.address.String(), client)
+	sender := agent.NewSender("http://"+flags.address.String(), client)
 
 	go func() {
 		for {

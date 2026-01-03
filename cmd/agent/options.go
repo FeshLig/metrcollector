@@ -23,7 +23,7 @@ func ParseFlags() Options {
 	options.reportInterval = time.Duration(10)
 	options.pollInterval = time.Duration(2)
 
-	flag.Var(&options.address, "a", "Net address host:port")
+	flag.Var(&options.address, "a", "net address host:port")
 	flag.Duration("r", options.reportInterval, "frequency of sending metrics")
 	flag.Duration("p", options.pollInterval, "metrics polling frequency")
 

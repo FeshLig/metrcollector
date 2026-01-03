@@ -18,7 +18,7 @@ func ParseFlags() Options {
 		Port: 8080,
 	}
 
-	flag.Var(&options.address, "a", "Net address host:port")
+	flag.Var(&options.address, "a", "net address host:port")
 
 	flag.Parse()
 	return options
