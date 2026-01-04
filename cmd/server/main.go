@@ -29,4 +29,5 @@ func Run() {
 	r.GET("/value/:type/:name/", valueHandler.ValuePage)
 
 	r.Run(flags.address.String())
+
 }

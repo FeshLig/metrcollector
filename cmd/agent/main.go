@@ -21,14 +21,14 @@ func main() {
 	go func() {
 		for {
 			collector.CollectMetrics()
-			time.Sleep(flags.pollInterval * time.Second)
+			time.Sleep(flags.pollInterval.Duration)
 		}
 	}()
 
 	go func() {
 		for {
 			sender.SendMetrics(storage)
-			time.Sleep(flags.reportInterval * time.Second)
+			time.Sleep(flags.reportInterval.Duration)
 		}
 	}()
 
