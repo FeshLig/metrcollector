@@ -22,7 +22,6 @@ func (h *ValueHandler) ValuePage(c *gin.Context) {
 	metricType := c.Param("type")
 	name := c.Param("name")
 
-	// Возможно перенести в сервис
 	switch metricType {
 	case "gauge":
 		gauges := h.metrics.SnapshotGauges()

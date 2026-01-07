@@ -6,7 +6,6 @@ import (
 	"github.com/FeshLig/metrcollector/internal/metric"
 )
 
-// возможно нужно добавить потокобезопасность, т.к. одновременно может происходить и копия и запись
 type MemStorage struct {
 	mu       sync.Mutex
 	gauges   map[string]metric.Gauge
@@ -23,13 +22,13 @@ func NewMemStorage() *MemStorage {
 func (m *MemStorage) SetGauge(name string, value float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.gauges[name] = metric.Gauge(value)
+	m.gauges[name].SetGauge(value)
 }
 
 func (m *MemStorage) AddCounter(name string, delta int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.counters[name] += metric.Counter(delta)
+	m.counters[name].AddCounter(delta)
 }
 
 func (m *MemStorage) SnapshotGauges() map[string]metric.Gauge {

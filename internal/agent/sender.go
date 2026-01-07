@@ -51,7 +51,6 @@ func (h *HTTPSender) SendMetrics(storage handler.SnapshotMetrics) {
 
 	sender := h
 
-	// Отправка gauges
 	for name, value := range storage.SnapshotGauges() {
 		strValue = fmt.Sprintf("%f", value)
 		if err := sender.Send("gauge", name, strValue); err != nil {
@@ -59,7 +58,6 @@ func (h *HTTPSender) SendMetrics(storage handler.SnapshotMetrics) {
 		}
 	}
 
-	// Отправка counters
 	for name, value := range storage.SnapshotCounters() {
 		strValue = fmt.Sprintf("%d", value)
 		if err := sender.Send("counter", name, strValue); err != nil {
