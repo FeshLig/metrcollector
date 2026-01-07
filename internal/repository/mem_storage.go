@@ -22,13 +22,13 @@ func NewMemStorage() *MemStorage {
 func (m *MemStorage) SetGauge(name string, value float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.gauges[name].SetGauge(value)
+	m.gauges[name] = m.gauges[name].SetGauge(value)
 }
 
 func (m *MemStorage) AddCounter(name string, delta int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.counters[name].AddCounter(delta)
+	m.counters[name] = m.counters[name].AddCounter(delta)
 }
 
 func (m *MemStorage) SnapshotGauges() map[string]metric.Gauge {
