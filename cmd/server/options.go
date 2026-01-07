@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/FeshLig/metrcollector/internal/net"
+	net "github.com/FeshLig/metrcollector/internal/flags"
 )
 
 type Options struct {

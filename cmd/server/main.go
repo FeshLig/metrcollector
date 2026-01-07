@@ -10,9 +10,6 @@ func main() {
 	Run()
 }
 
-// TODO:
-// Добавить возврат ошибки
-// Убрать панику
 func Run() {
 
 	flags := ParseFlags()

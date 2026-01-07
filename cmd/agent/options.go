@@ -4,7 +4,7 @@ import (
 	"flag"
 	"time"
 
-	"github.com/FeshLig/metrcollector/internal/net"
+	net "github.com/FeshLig/metrcollector/internal/flags"
 )
 
 type Options struct {
