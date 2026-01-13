@@ -31,6 +31,12 @@ func (m *MemStorage) AddCounter(name string, delta int64) {
 	m.counters[name] = m.counters[name].AddCounter(delta)
 }
 
+func (m *MemStorage) SetCounter(name string, value int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.counters[name] = m.counters[name].SetCounter(value)
+}
+
 func (m *MemStorage) SnapshotGauges() map[string]metric.Gauge {
 	m.mu.Lock()
 	defer m.mu.Unlock()

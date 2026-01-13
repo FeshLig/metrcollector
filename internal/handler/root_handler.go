@@ -2,8 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/FeshLig/metrcollector/internal/metric"
 	"github.com/gin-gonic/gin"
@@ -26,24 +24,11 @@ func NewRootHandler(m SnapshotMetrics) *RootHandler {
 
 func (h *RootHandler) RootPage(c *gin.Context) {
 
-	gauges := h.metrics.SnapshotGauges()
-	counters := h.metrics.SnapshotCounters()
+	c.HTML(http.StatusOK, "root.html", gin.H{
+		"Gauges":   h.metrics.SnapshotGauges(),
+		"Counters": h.metrics.SnapshotCounters(),
+	})
 
-	var str strings.Builder
+	c.Status(http.StatusOK)
 
-	for name, value := range gauges {
-		str.WriteString(name)
-		str.WriteString(": ")
-		str.WriteString(strconv.FormatFloat(float64(value), 'f', -1, 64))
-		str.WriteByte('\n')
-	}
-
-	for name, value := range counters {
-		str.WriteString(name)
-		str.WriteString(": ")
-		str.WriteString(strconv.FormatInt(int64(value), 10))
-		str.WriteByte('\n')
-	}
-
-	c.String(http.StatusOK, str.String())
 }

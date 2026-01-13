@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"flag"
@@ -7,18 +7,18 @@ import (
 )
 
 type Options struct {
-	address net.NetAddress
+	Address net.NetAddress
 }
 
 func ParseFlags() Options {
 	var options Options
 
-	options.address = net.NetAddress{
+	options.Address = net.NetAddress{
 		Host: "localhost",
 		Port: 8080,
 	}
 
-	flag.Var(&options.address, "a", "net address host:port")
+	flag.Var(&options.Address, "a", "net address host:port")
 
 	flag.Parse()
 	return options

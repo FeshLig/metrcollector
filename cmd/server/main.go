@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/FeshLig/metrcollector/internal/handler"
+	"github.com/FeshLig/metrcollector/internal/config"
 	"github.com/FeshLig/metrcollector/internal/repository"
-	"github.com/gin-gonic/gin"
+	"github.com/FeshLig/metrcollector/internal/router"
 )
 
 func main() {
@@ -12,19 +12,12 @@ func main() {
 
 func Run() {
 
-	flags := ParseFlags()
-
-	r := gin.Default()
+	flags := config.ParseFlags()
 
 	memStorage := repository.NewMemStorage()
-	updateHandler := handler.NewUpdateHandler(memStorage)
-	rootHandler := handler.NewRootHandler(memStorage)
-	valueHandler := handler.NewValueHandler(memStorage)
 
-	r.GET("/", rootHandler.RootPage)
-	r.POST("/update/:type/:name/:value/", updateHandler.UpdatePage)
-	r.GET("/value/:type/:name/", valueHandler.ValuePage)
+	router := router.NewRouter(memStorage)
 
-	r.Run(flags.address.String())
+	router.Run(flags.Address.String())
 
 }
