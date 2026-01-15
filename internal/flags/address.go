@@ -1,4 +1,4 @@
-package net
+package flags
 
 import (
 	"errors"

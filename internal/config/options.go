@@ -3,17 +3,17 @@ package config
 import (
 	"flag"
 
-	net "github.com/FeshLig/metrcollector/internal/flags"
+	"github.com/FeshLig/metrcollector/internal/flags"
 )
 
 type Options struct {
-	Address net.NetAddress
+	Address flags.NetAddress
 }
 
 func ParseFlags() Options {
 	var options Options
 
-	options.Address = net.NetAddress{
+	options.Address = flags.NetAddress{
 		Host: "localhost",
 		Port: 8080,
 	}
