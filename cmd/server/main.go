@@ -12,7 +12,7 @@ func main() {
 
 func Run() {
 
-	flags := config.ParseFlags()
+	flags := config.GetOptions()
 
 	memStorage := repository.NewMemStorage()
 
