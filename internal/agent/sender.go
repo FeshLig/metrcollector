@@ -32,7 +32,7 @@ func (h *HTTPSender) Send(metricType, name, value string) error {
 	url := fmt.Sprintf("%s/update/%s/%s/%s", h.BaseURL, metricType, name, value)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
-		return fmt.Errorf("Ошибка создания реквеста: %w", err)
+		return fmt.Errorf("ошибка создания реквеста: %w", err)
 	}
 	req.Header.Set("Content-Type", "text/plain")
 
