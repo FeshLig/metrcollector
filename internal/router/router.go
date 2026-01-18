@@ -2,13 +2,22 @@ package router
 
 import (
 	"github.com/FeshLig/metrcollector/internal/handler"
+	"github.com/FeshLig/metrcollector/internal/middleware"
 	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func NewRouter(memStorage *repository.MemStorage) *gin.Engine {
 
-	r := gin.Default()
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic("cannot initialize zap")
+	}
+
+	r := gin.New()
+	r.Use(middleware.Logger(logger), gin.Recovery())
+
 	r.LoadHTMLGlob("./internal/templates/*")
 
 	updateHandler := handler.NewUpdateHandler(memStorage)
