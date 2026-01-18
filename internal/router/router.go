@@ -15,6 +15,8 @@ func NewRouter(memStorage *repository.MemStorage) *gin.Engine {
 		panic("cannot initialize zap")
 	}
 
+	defer logger.Sync()
+
 	r := gin.New()
 	r.Use(middleware.Logger(logger), gin.Recovery())
 
