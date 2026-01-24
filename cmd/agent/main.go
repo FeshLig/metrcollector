@@ -1,3 +1,16 @@
 package main
 
-func main() {}
+import (
+	"github.com/FeshLig/metrcollector/internal/agent"
+	"github.com/FeshLig/metrcollector/internal/repository"
+)
+
+func main() {
+
+	options := agent.ParseFlags()
+
+	storage := repository.NewMemStorage()
+
+	agent.RunSender(storage, options)
+
+}
