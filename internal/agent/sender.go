@@ -1,18 +1,20 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
+	"github.com/FeshLig/metrcollector/internal/dto"
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
 type MetricsSender interface {
-	Send(metricType, name, value string) error
+	Send(metric dto.Metrics) error
 }
 
 type HTTPSender struct {
@@ -27,23 +29,29 @@ func NewSender(url string, client *http.Client) *HTTPSender {
 	}
 }
 
-func (h *HTTPSender) Send(metricType, name, value string) error {
+func (h *HTTPSender) Send(metric dto.Metrics) error {
 
-	url := fmt.Sprintf("%s/update/%s/%s/%s", h.BaseURL, metricType, name, value)
-	req, err := http.NewRequest("POST", url, nil)
+	body, err := json.Marshal(metric)
 	if err != nil {
-		return fmt.Errorf("ошибка создания реквеста: %w", err)
+		return fmt.Errorf("marshal metric: %w", err)
 	}
-	req.Header.Set("Content-Type", "text/plain")
+
+	url := fmt.Sprintf("%s/update/", h.BaseURL)
+	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := h.Client.Do(req)
 	if err != nil {
-		return fmt.Errorf("%w", err)
+		return fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("неверный статус: %d", resp.StatusCode)
+		return fmt.Errorf("bad status: %d", resp.StatusCode)
 	}
 
 	return nil
@@ -52,21 +60,30 @@ func (h *HTTPSender) Send(metricType, name, value string) error {
 
 func (h *HTTPSender) SendMetrics(storage handler.SnapshotMetrics) {
 
-	var strValue string
-
 	sender := h
 
 	for name, value := range storage.SnapshotGauges() {
-		strValue = strconv.FormatFloat(float64(value), 'f', -1, 64)
-		if err := sender.Send("gauge", name, strValue); err != nil {
-			log.Printf("Ошибка отправки gauge %s: %v", name, err)
+		v := float64(value)
+		metric := dto.Metrics{
+			ID:    name,
+			MType: "gauge",
+			Value: &v,
+		}
+
+		if err := sender.Send(metric); err != nil {
+			log.Printf("ошибка отправки gauge %s: %v", name, err)
 		}
 	}
 
 	for name, value := range storage.SnapshotCounters() {
-		strValue = strconv.FormatInt(int64(value), 10)
-		if err := sender.Send("counter", name, strValue); err != nil {
-			log.Printf("Ошибка отправки counter %s: %v", name, err)
+		v := int64(value)
+		metric := dto.Metrics{
+			ID:    name,
+			MType: "counter",
+			Delta: &v,
+		}
+		if err := sender.Send(metric); err != nil {
+			log.Printf("ошибка отправки counter %s: %v", name, err)
 		}
 	}
 

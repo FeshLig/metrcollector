@@ -19,22 +19,40 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (m *MemStorage) SetGauge(name string, value float64) {
+func (m *MemStorage) SetGauge(name string, value metric.Gauge) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.gauges[name] = m.gauges[name].SetGauge(value)
 }
 
-func (m *MemStorage) AddCounter(name string, delta int64) {
+func (m *MemStorage) GetGauge(name string) (metric.Gauge, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	gauge, ok := m.gauges[name]
+
+	return gauge, ok
+}
+
+func (m *MemStorage) AddCounter(name string, delta metric.Counter) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.counters[name] = m.counters[name].AddCounter(delta)
 }
 
-func (m *MemStorage) SetCounter(name string, value int64) {
+func (m *MemStorage) SetCounter(name string, value metric.Counter) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.counters[name] = m.counters[name].SetCounter(value)
+}
+
+func (m *MemStorage) GetCounter(name string) (metric.Counter, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	counter, ok := m.counters[name]
+
+	return counter, ok
 }
 
 func (m *MemStorage) SnapshotGauges() map[string]metric.Gauge {
