@@ -19,7 +19,7 @@ func NewRouter(memStorage *repository.MemStorage) *gin.Engine {
 	defer logger.Sync()
 
 	r := gin.New()
-	r.Use(middleware.Logger(logger), gin.Recovery())
+	r.Use(middleware.Logger(logger), middleware.Gzip(), gin.Recovery())
 
 	r.LoadHTMLGlob("./internal/templates/*")
 
