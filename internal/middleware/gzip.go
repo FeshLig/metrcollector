@@ -11,7 +11,9 @@ import (
 
 type compressWriter struct {
 	gin.ResponseWriter
-	zw *gzip.Writer
+	zw        *gzip.Writer
+	modeKnown bool
+	useGzip   bool
 }
 
 func newCompressWriter(w gin.ResponseWriter) *compressWriter {
@@ -22,15 +24,31 @@ func newCompressWriter(w gin.ResponseWriter) *compressWriter {
 }
 
 func (c *compressWriter) Write(p []byte) (int, error) {
-	contentType := c.Header().Get("Content-Type")
-	if strings.Contains(contentType, "application/json") || strings.Contains(contentType, "text/html") {
+	if !c.modeKnown {
+		ct := c.Header().Get("Content-Type")
+		c.useGzip =
+			strings.Contains(ct, "application/json") ||
+				strings.Contains(ct, "text/html")
+
+		if c.useGzip {
+			c.Header().Set("Content-Encoding", "gzip")
+		}
+		c.modeKnown = true
+	}
+
+	if c.useGzip {
 		return c.zw.Write(p)
 	}
+
 	return c.ResponseWriter.Write(p)
+
 }
 
 func (c *compressWriter) Close() error {
-	return c.zw.Close()
+	if c.useGzip {
+		return c.zw.Close()
+	}
+	return nil
 }
 
 type compressReader struct {
@@ -68,7 +86,6 @@ func Gzip() gin.HandlerFunc {
 		acceptEncoding := c.GetHeader("Accept-Encoding")
 
 		if strings.Contains(acceptEncoding, "gzip") {
-			c.Header("Content-Encoding", "gzip")
 			cw := newCompressWriter(c.Writer)
 			c.Writer = cw
 			defer cw.Close()
