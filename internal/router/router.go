@@ -3,13 +3,12 @@ package router
 import (
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/middleware"
-	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/FeshLig/metrcollector/internal/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func NewRouter(memStorage *repository.MemStorage) *gin.Engine {
+func NewRouter(service service.MetricsService) *gin.Engine {
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -23,9 +22,7 @@ func NewRouter(memStorage *repository.MemStorage) *gin.Engine {
 
 	r.LoadHTMLGlob("./internal/templates/*")
 
-	service := service.NewMetricService(memStorage)
-
-	rootHandler := handler.NewRootHandler(memStorage)
+	rootHandler := handler.NewRootHandler(service)
 
 	updateJSONHandler := handler.NewUpdateJSONHandler(service)
 	valueJSONHandler := handler.NewValueJSONHandler(service)

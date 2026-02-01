@@ -6,6 +6,17 @@ import (
 	"github.com/FeshLig/metrcollector/internal/metric"
 )
 
+type Storage interface {
+	SetGauge(name string, value metric.Gauge)
+	AddCounter(name string, delta metric.Counter)
+
+	GetGauge(name string) (metric.Gauge, bool)
+	GetCounter(name string) (metric.Counter, bool)
+
+	SnapshotGauges() map[string]metric.Gauge
+	SnapshotCounters() map[string]metric.Counter
+}
+
 type MemStorage struct {
 	mu       sync.Mutex
 	gauges   map[string]metric.Gauge
@@ -55,6 +66,16 @@ func (m *MemStorage) GetCounter(name string) (metric.Counter, bool) {
 	return counter, ok
 }
 
+func (m *MemStorage) SetMetrics(gauges map[string]metric.Gauge, counters map[string]metric.Counter) {
+	for name, value := range gauges {
+		m.SetGauge(name, value)
+	}
+
+	for name, value := range counters {
+		m.SetCounter(name, value)
+	}
+}
+
 func (m *MemStorage) SnapshotGauges() map[string]metric.Gauge {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -73,4 +94,11 @@ func (m *MemStorage) SnapshotCounters() map[string]metric.Counter {
 		copy[k] = v
 	}
 	return copy
+}
+
+func (m *MemStorage) SnapshotMetrics() (map[string]metric.Gauge, map[string]metric.Counter) {
+	gauges := m.SnapshotGauges()
+	counters := m.SnapshotCounters()
+
+	return gauges, counters
 }

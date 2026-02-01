@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
-	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
@@ -70,7 +69,7 @@ func (h *HTTPSender) Send(metric dto.Metrics) error {
 	return nil
 }
 
-func (h *HTTPSender) SendMetrics(storage handler.SnapshotMetrics) {
+func (h *HTTPSender) SendMetrics(storage repository.Storage) {
 
 	sender := h
 
