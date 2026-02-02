@@ -151,7 +151,7 @@ func (s *MetricServiceImpl) SnapshotCounterMetrics() []dto.Metrics {
 		v := int64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "gauge",
+			MType: "counter",
 			Delta: &v,
 		})
 	}
