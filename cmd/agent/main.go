@@ -7,7 +7,7 @@ import (
 
 func main() {
 
-	options := agent.ParseFlags()
+	options := agent.GetOptions()
 
 	storage := repository.NewMemStorage()
 
