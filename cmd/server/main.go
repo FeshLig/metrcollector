@@ -31,7 +31,7 @@ func Run() error {
 	ctx, cancel := newStartapContext()
 	defer cancel()
 
-	db, err := newDb(ctx, cfg)
+	db, err := newDB(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -56,13 +56,13 @@ func Run() error {
 
 func newStartapContext() (context.Context, context.CancelFunc) {
 
-	const timeSeconds = 5 * time.Second
+	const t = 5 * time.Second
 
-	return context.WithTimeout(context.Background(), timeSeconds)
+	return context.WithTimeout(context.Background(), t)
 
 }
 
-func newDb(ctx context.Context, cfg config.Options) (*pgxpool.Pool, error) {
+func newDB(ctx context.Context, cfg config.Options) (*pgxpool.Pool, error) {
 
 	// dsn := "postgres://metrics:Fjytotbytn4rjtvju@localhost:5432/metrics"
 	dsn := cfg.DatabaseDSN.String()
