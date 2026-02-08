@@ -14,7 +14,7 @@ import (
 )
 
 type MetricsSender interface {
-	Send(metric dto.Metrics) error
+	Send(metric *dto.Metrics) error
 }
 
 type HTTPSender struct {
@@ -29,7 +29,7 @@ func NewSender(url string, client *http.Client) *HTTPSender {
 	}
 }
 
-func (h *HTTPSender) Send(metric dto.Metrics) error {
+func (h *HTTPSender) Send(metric *dto.Metrics) error {
 
 	body, err := json.Marshal(metric)
 	if err != nil {
@@ -81,7 +81,7 @@ func (h *HTTPSender) SendMetrics(storage repository.Storage) {
 			Value: &v,
 		}
 
-		if err := sender.Send(metric); err != nil {
+		if err := sender.Send(&metric); err != nil {
 			log.Printf("ошибка отправки gauge %s: %v", name, err)
 		}
 	}
@@ -93,7 +93,7 @@ func (h *HTTPSender) SendMetrics(storage repository.Storage) {
 			MType: "counter",
 			Delta: &v,
 		}
-		if err := sender.Send(metric); err != nil {
+		if err := sender.Send(&metric); err != nil {
 			log.Printf("ошибка отправки counter %s: %v", name, err)
 		}
 	}

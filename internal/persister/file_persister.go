@@ -11,21 +11,21 @@ import (
 	"github.com/FeshLig/metrcollector/internal/metric"
 )
 
-type metricsStorage interface {
+type MetricsStorage interface {
 	SnapshotMetrics() (map[string]metric.Gauge, map[string]metric.Counter)
 	SetMetrics(map[string]metric.Gauge, map[string]metric.Counter)
 }
 
 type FilePersister struct {
 	path     string
-	storage  metricsStorage
+	storage  MetricsStorage
 	interval time.Duration
 	stop     chan struct{}
 }
 
 func NewFilePersister(
 	path string,
-	storage metricsStorage,
+	storage MetricsStorage,
 	interval time.Duration,
 ) *FilePersister {
 	return &FilePersister{
@@ -45,7 +45,7 @@ func (p *FilePersister) Save() error {
 		v := float64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "gauge",
+			MType: dto.Gauge,
 			Value: &v,
 		})
 	}
@@ -53,7 +53,7 @@ func (p *FilePersister) Save() error {
 		v := int64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "counter",
+			MType: dto.Counter,
 			Delta: &v,
 		})
 	}
@@ -97,12 +97,12 @@ func (p *FilePersister) Load() error {
 
 	for _, m := range metrics {
 		switch m.MType {
-		case "gauge":
+		case dto.Gauge:
 			if m.Value == nil {
 				return errors.New("gauge value is nil")
 			}
 			gauges[m.ID] = metric.Gauge(*m.Value)
-		case "counter":
+		case dto.Counter:
 			if m.Delta == nil {
 				return errors.New("counter delta is nil")
 			}

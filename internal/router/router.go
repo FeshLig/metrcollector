@@ -3,12 +3,11 @@ package router
 import (
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/middleware"
-	"github.com/FeshLig/metrcollector/internal/service"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func NewRouter(service service.MetricsService) *gin.Engine {
+func NewRouter(handlers *handler.Handlers) *gin.Engine {
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -22,19 +21,12 @@ func NewRouter(service service.MetricsService) *gin.Engine {
 
 	r.LoadHTMLGlob("./internal/templates/*")
 
-	rootHandler := handler.NewRootHandler(service)
-
-	updateJSONHandler := handler.NewUpdateJSONHandler(service)
-	valueJSONHandler := handler.NewValueJSONHandler(service)
-
-	updateURLHandler := handler.NewUpdateURLHandler(service)
-	valueURLHandler := handler.NewValueURLHandler(service)
-
-	r.GET("/", rootHandler.RootPage)
-	r.POST("/update/", updateJSONHandler.UpdateFromJSON)
-	r.POST("/value/", valueJSONHandler.UpdateFromJSON)
-	r.POST("/update/:type/:name/:value/", updateURLHandler.UpdateFromURL)
-	r.GET("/value/:type/:name/", valueURLHandler.ValueFromURL)
+	r.GET("/", handlers.Root.RootPage)
+	r.POST("/update/", handlers.UpdateJSON.UpdateFromJSON)
+	r.POST("/value/", handlers.ValueJSON.UpdateFromJSON)
+	r.POST("/update/:type/:name/:value/", handlers.UpdateURL.UpdateFromURL)
+	r.GET("/value/:type/:name/", handlers.ValueURL.ValueFromURL)
+	r.GET("/ping/", handlers.Ping.PingPage)
 
 	return r
 

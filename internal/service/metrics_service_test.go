@@ -74,7 +74,7 @@ func TestMetricService_Update(t *testing.T) {
 			name: "valid gauge",
 			metric: dto.Metrics{
 				ID:    "g1",
-				MType: "gauge",
+				MType: dto.Gauge,
 				Value: &value,
 			},
 		},
@@ -82,7 +82,7 @@ func TestMetricService_Update(t *testing.T) {
 			name: "gauge without value",
 			metric: dto.Metrics{
 				ID:    "g1",
-				MType: "gauge",
+				MType: dto.Gauge,
 			},
 			expectError: true,
 			errCode:     service.ErrInvalidValue,
@@ -91,7 +91,7 @@ func TestMetricService_Update(t *testing.T) {
 			name: "valid counter",
 			metric: dto.Metrics{
 				ID:    "c1",
-				MType: "counter",
+				MType: dto.Counter,
 				Delta: &delta,
 			},
 		},
@@ -99,7 +99,7 @@ func TestMetricService_Update(t *testing.T) {
 			name: "counter without delta",
 			metric: dto.Metrics{
 				ID:    "c1",
-				MType: "counter",
+				MType: dto.Counter,
 			},
 			expectError: true,
 			errCode:     service.ErrInvalidValue,
@@ -138,11 +138,11 @@ func TestMetricService_Update(t *testing.T) {
 				return
 			}
 
-			if tt.metric.MType == "gauge" && !storage.setGaugeCalled && !tt.expectError {
+			if tt.metric.MType == dto.Gauge && !storage.setGaugeCalled && !tt.expectError {
 				t.Fatal("expected SetGauge to be called")
 			}
 
-			if tt.metric.MType == "counter" && !storage.addCounterCalled && !tt.expectError {
+			if tt.metric.MType == dto.Counter && !storage.addCounterCalled && !tt.expectError {
 				t.Fatal("expected AddCounter to be called")
 			}
 
@@ -168,7 +168,7 @@ func TestMetricService_Get(t *testing.T) {
 	t.Run("get gauge", func(t *testing.T) {
 		res, err := svc.Get(dto.Metrics{
 			ID:    "g1",
-			MType: "gauge",
+			MType: dto.Gauge,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -181,7 +181,7 @@ func TestMetricService_Get(t *testing.T) {
 	t.Run("get counter", func(t *testing.T) {
 		res, err := svc.Get(dto.Metrics{
 			ID:    "c1",
-			MType: "counter",
+			MType: dto.Counter,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -194,7 +194,7 @@ func TestMetricService_Get(t *testing.T) {
 	t.Run("not found", func(t *testing.T) {
 		_, err := svc.Get(dto.Metrics{
 			ID:    "missing",
-			MType: "gauge",
+			MType: dto.Gauge,
 		})
 		if err == nil {
 			t.Fatal("expected error")
@@ -219,7 +219,7 @@ func TestMetricService_SnapshotGaugeMetrics(t *testing.T) {
 
 	found := map[string]float64{}
 	for _, m := range res {
-		if m.MType != "gauge" {
+		if m.MType != dto.Gauge {
 			t.Fatalf("expected gauge type, got %s", m.MType)
 		}
 		if m.Value == nil {
@@ -250,7 +250,7 @@ func TestMetricService_SnapshotCounterMetrics(t *testing.T) {
 
 	found := map[string]int64{}
 	for _, m := range res {
-		if m.MType != "counter" {
+		if m.MType != dto.Counter {
 			t.Fatalf("expected counter type, got %s", m.MType)
 		}
 		if m.Delta == nil {
@@ -274,7 +274,7 @@ func TestMetricService_Update_SyncSave(t *testing.T) {
 
 	err := svc.Update(dto.Metrics{
 		ID:    "g1",
-		MType: "gauge",
+		MType: dto.Gauge,
 		Value: &value,
 	})
 
@@ -297,7 +297,7 @@ func TestMetricService_Update_NoSyncSave(t *testing.T) {
 
 	_ = svc.Update(dto.Metrics{
 		ID:    "g1",
-		MType: "gauge",
+		MType: dto.Gauge,
 		Value: &value,
 	})
 

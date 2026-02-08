@@ -32,7 +32,7 @@ func (h *UpdateURLHandler) UpdateFromURL(c *gin.Context) {
 
 	switch metricType {
 
-	case "gauge":
+	case dto.Gauge:
 		value, err := strconv.ParseFloat(valueStr, 64)
 		if err != nil {
 			c.String(http.StatusBadRequest, "wrong gauge value")
@@ -40,7 +40,7 @@ func (h *UpdateURLHandler) UpdateFromURL(c *gin.Context) {
 		}
 		metric.Value = &value
 
-	case "counter":
+	case dto.Counter:
 		delta, err := strconv.ParseInt(valueStr, 10, 64)
 		if err != nil {
 			c.String(http.StatusBadRequest, "wrong counter value")

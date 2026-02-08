@@ -44,7 +44,7 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 
 	switch metricType {
 
-	case "gauge":
+	case dto.Gauge:
 		if m.Value == nil {
 			return &ServiceError{
 				Code: ErrInvalidValue,
@@ -56,7 +56,7 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 			s.persister.SaveNow()
 		}
 
-	case "counter":
+	case dto.Counter:
 		if m.Delta == nil {
 			return &ServiceError{
 				Code: ErrInvalidValue,
@@ -92,7 +92,7 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 
 	switch metricType {
 
-	case "gauge":
+	case dto.Gauge:
 		value, ok := s.storage.GetGauge(name)
 		if !ok {
 			return m, &ServiceError{
@@ -103,7 +103,7 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 		v := float64(value)
 		result.Value = &v
 
-	case "counter":
+	case dto.Counter:
 		value, ok := s.storage.GetCounter(name)
 		if !ok {
 			return m, &ServiceError{
@@ -134,7 +134,7 @@ func (s *MetricServiceImpl) SnapshotGaugeMetrics() []dto.Metrics {
 		v := float64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "gauge",
+			MType: dto.Gauge,
 			Value: &v,
 		})
 	}
@@ -151,7 +151,7 @@ func (s *MetricServiceImpl) SnapshotCounterMetrics() []dto.Metrics {
 		v := int64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "counter",
+			MType: dto.Counter,
 			Delta: &v,
 		})
 	}

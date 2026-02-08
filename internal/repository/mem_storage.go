@@ -18,7 +18,7 @@ type Storage interface {
 }
 
 type MemStorage struct {
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	gauges   map[string]metric.Gauge
 	counters map[string]metric.Counter
 }

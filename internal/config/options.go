@@ -17,6 +17,7 @@ type Options struct {
 	StoreInterval   flags.SecondsStoreInterval
 	FileStoragePath flags.FileStoragePath
 	Restore         flags.Restore
+	DatabaseDSN     flags.DatabaseDSN
 }
 
 func GetOptions() Options {
@@ -60,6 +61,7 @@ func parseFlags(options *Options) {
 	flag.Var(&options.StoreInterval, "i", "store interval (seconds)")
 	flag.Var(&options.FileStoragePath, "f", "file storage path")
 	flag.Var(&options.Restore, "r", "restore file (true/false)")
+	flag.Var(&options.DatabaseDSN, "d", "postgres dsn (format: postgres://user:password@host:port/dbname)")
 
 	flag.Parse()
 
@@ -92,6 +94,13 @@ func parseEnv(options *Options) error {
 		err := options.Restore.Set(rstrStr)
 		if err != nil {
 			return fmt.Errorf("wrong value of RESTORE: %w", err)
+		}
+	}
+
+	if databaseDSNStr, ok := os.LookupEnv("DATABASE_DSN"); ok {
+		err := options.DatabaseDSN.Set(databaseDSNStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of DATABASE_DSN: %w", err)
 		}
 	}
 
