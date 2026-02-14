@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -73,7 +74,7 @@ func (h *HTTPSender) SendMetrics(storage repository.Storage) {
 
 	sender := h
 
-	for name, value := range storage.SnapshotGauges() {
+	for name, value := range storage.SnapshotGauges(context.TODO()) {
 		v := float64(value)
 		metric := dto.Metrics{
 			ID:    name,
@@ -86,7 +87,7 @@ func (h *HTTPSender) SendMetrics(storage repository.Storage) {
 		}
 	}
 
-	for name, value := range storage.SnapshotCounters() {
+	for name, value := range storage.SnapshotCounters(context.TODO()) {
 		v := int64(value)
 		metric := dto.Metrics{
 			ID:    name,

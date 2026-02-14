@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
@@ -51,7 +52,7 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 				Msg:  "empty gauge value",
 			}
 		}
-		s.storage.SetGauge(name, metric.Gauge(*m.Value))
+		s.storage.SetGauge(context.TODO(), name, metric.Gauge(*m.Value))
 		if s.syncSave {
 			s.persister.SaveNow()
 		}
@@ -63,7 +64,7 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 				Msg:  "empty counter delta",
 			}
 		}
-		s.storage.AddCounter(name, metric.Counter(*m.Delta))
+		s.storage.AddCounter(context.TODO(), name, metric.Counter(*m.Delta))
 		if s.syncSave {
 			s.persister.SaveNow()
 		}
@@ -93,7 +94,7 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 	switch metricType {
 
 	case dto.Gauge:
-		value, ok := s.storage.GetGauge(name)
+		value, ok := s.storage.GetGauge(context.TODO(), name)
 		if !ok {
 			return m, &ServiceError{
 				Code: ErrNotFound,
@@ -104,7 +105,7 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 		result.Value = &v
 
 	case dto.Counter:
-		value, ok := s.storage.GetCounter(name)
+		value, ok := s.storage.GetCounter(context.TODO(), name)
 		if !ok {
 			return m, &ServiceError{
 				Code: ErrNotFound,
@@ -129,7 +130,7 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 func (s *MetricServiceImpl) SnapshotGaugeMetrics() []dto.Metrics {
 
 	var metrics []dto.Metrics
-	gauges := s.storage.SnapshotGauges()
+	gauges := s.storage.SnapshotGauges(context.TODO())
 	for name, value := range gauges {
 		v := float64(value)
 		metrics = append(metrics, dto.Metrics{
@@ -146,7 +147,7 @@ func (s *MetricServiceImpl) SnapshotGaugeMetrics() []dto.Metrics {
 func (s *MetricServiceImpl) SnapshotCounterMetrics() []dto.Metrics {
 
 	var metrics []dto.Metrics
-	counters := s.storage.SnapshotCounters()
+	counters := s.storage.SnapshotCounters(context.TODO())
 	for name, value := range counters {
 		v := int64(value)
 		metrics = append(metrics, dto.Metrics{

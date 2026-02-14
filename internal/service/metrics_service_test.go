@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
@@ -23,32 +24,50 @@ func newMockStorage() *mockStorage {
 	}
 }
 
-func (m *mockStorage) SetGauge(name string, value metric.Gauge) {
+func (m *mockStorage) SetGauge(ctx context.Context, name string, value metric.Gauge) error {
 	m.setGaugeCalled = true
 	m.gauges[name] = value
+	return nil
 }
 
-func (m *mockStorage) AddCounter(name string, value metric.Counter) {
+func (m *mockStorage) AddCounter(ctx context.Context, name string, value metric.Counter) error {
 	m.addCounterCalled = true
 	m.counters[name] += value
+	return nil
 }
 
-func (m *mockStorage) GetGauge(name string) (metric.Gauge, bool) {
+func (m *mockStorage) GetGauge(ctx context.Context, name string) (metric.Gauge, bool) {
 	v, ok := m.gauges[name]
 	return v, ok
 }
 
-func (m *mockStorage) GetCounter(name string) (metric.Counter, bool) {
+func (m *mockStorage) GetCounter(ctx context.Context, name string) (metric.Counter, bool) {
 	v, ok := m.counters[name]
 	return v, ok
 }
 
-func (m *mockStorage) SnapshotGauges() map[string]metric.Gauge {
+func (m *mockStorage) SnapshotGauges(ctx context.Context) map[string]metric.Gauge {
 	return m.gauges
 }
 
-func (m *mockStorage) SnapshotCounters() map[string]metric.Counter {
+func (m *mockStorage) SnapshotCounters(ctx context.Context) map[string]metric.Counter {
 	return m.counters
+}
+
+func (m *mockStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) {
+	for name, value := range gauges {
+		m.gauges[name] = value
+	}
+	for name, value := range counters {
+		m.counters[name] = value
+	}
+}
+
+func (m *mockStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Gauge, map[string]metric.Counter) {
+	gauges := m.SnapshotGauges(ctx)
+	counters := m.SnapshotCounters(ctx)
+
+	return gauges, counters
 }
 
 type mockPersister struct {

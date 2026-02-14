@@ -1,6 +1,7 @@
 package persister
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -9,23 +10,19 @@ import (
 
 	"github.com/FeshLig/metrcollector/internal/dto"
 	"github.com/FeshLig/metrcollector/internal/metric"
+	"github.com/FeshLig/metrcollector/internal/repository"
 )
-
-type MetricsStorage interface {
-	SnapshotMetrics() (map[string]metric.Gauge, map[string]metric.Counter)
-	SetMetrics(map[string]metric.Gauge, map[string]metric.Counter)
-}
 
 type FilePersister struct {
 	path     string
-	storage  MetricsStorage
+	storage  repository.Storage
 	interval time.Duration
 	stop     chan struct{}
 }
 
 func NewFilePersister(
 	path string,
-	storage MetricsStorage,
+	storage repository.Storage,
 	interval time.Duration,
 ) *FilePersister {
 	return &FilePersister{
@@ -39,7 +36,7 @@ func NewFilePersister(
 func (p *FilePersister) Save() error {
 
 	var metrics []dto.Metrics
-	gauges, counters := p.storage.SnapshotMetrics()
+	gauges, counters := p.storage.SnapshotMetrics(context.TODO())
 
 	for name, value := range gauges {
 		v := float64(value)
@@ -111,7 +108,7 @@ func (p *FilePersister) Load() error {
 			return errors.New("invalid metric type")
 		}
 	}
-	p.storage.SetMetrics(gauges, counters)
+	p.storage.SetMetrics(context.TODO(), gauges, counters)
 
 	return nil
 

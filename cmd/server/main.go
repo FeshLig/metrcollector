@@ -26,35 +26,51 @@ func main() {
 
 func Run() error {
 
+	var storage repository.Storage
+	var db *pgxpool.Pool
+	var err error
+
 	cfg := config.GetOptions()
 
-	ctx, cancel := newStartapContext()
+	ctx, cancel := newStartupContext()
 	defer cancel()
 
-	db, err := newDB(ctx, cfg)
-	if err != nil {
-		return err
+	if cfg.DatabaseDSN.String() != "" {
+
+		db, err = newDB(ctx, cfg)
+		if err != nil {
+			return err
+		}
+		if db != nil {
+			defer db.Close()
+		}
+
+		storage = repository.NewPostgresStorage(db)
+
+	} else {
+
+		storage = repository.NewMemStorage()
 	}
 
-	memStorage := repository.NewMemStorage()
-
-	persister, err := newPersister(cfg, memStorage)
+	persister, err := newPersister(cfg, storage)
 	if err != nil {
 		return err
 	}
 	defer persister.Stop()
 
-	service := NewService(cfg, memStorage, persister)
+	service := NewService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, db)
 	router := router.NewRouter(handlers)
 
-	router.Run(cfg.Address.String())
+	if err := router.Run(cfg.Address.String()); err != nil {
+		return err
+	}
 
 	return nil
 
 }
 
-func newStartapContext() (context.Context, context.CancelFunc) {
+func newStartupContext() (context.Context, context.CancelFunc) {
 
 	const t = 5 * time.Second
 
@@ -67,6 +83,10 @@ func newDB(ctx context.Context, cfg config.Options) (*pgxpool.Pool, error) {
 	// dsn := "postgres://metrics:Fjytotbytn4rjtvju@localhost:5432/metrics"
 	dsn := cfg.DatabaseDSN.String()
 
+	if err := repository.RunMigrations(dsn); err != nil {
+		return nil, err
+	}
+
 	db, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("db init failed: %w", err)
@@ -76,7 +96,7 @@ func newDB(ctx context.Context, cfg config.Options) (*pgxpool.Pool, error) {
 
 }
 
-func newPersister(cfg config.Options, storage persister.MetricsStorage) (*persister.FilePersister, error) {
+func newPersister(cfg config.Options, storage repository.Storage) (*persister.FilePersister, error) {
 
 	filePath := cfg.FileStoragePath.String()
 	storeInterval := cfg.StoreInterval.Duration
