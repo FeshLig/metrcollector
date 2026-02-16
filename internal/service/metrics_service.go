@@ -111,7 +111,7 @@ func (s *MetricServiceImpl) Updates(m []dto.Metrics) error {
 					Msg:  "empty counter delta",
 				}
 			}
-			counters[name] = metric.Counter(*mVal.Delta)
+			counters[name] += metric.Counter(*mVal.Delta)
 
 		default:
 			return &ServiceError{
