@@ -17,5 +17,5 @@ type Storage interface {
 	SnapshotCounters(ctx context.Context) map[string]metric.Counter
 	SnapshotMetrics(ctx context.Context) (map[string]metric.Gauge, map[string]metric.Counter)
 
-	SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter)
+	SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) error
 }

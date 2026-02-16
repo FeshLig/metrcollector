@@ -13,6 +13,7 @@ type Handlers struct {
 	UpdateURL  *UpdateURLHandler
 	ValueURL   *ValueURLHandler
 	Ping       *PingHandler
+	Updates    *UpdatesHandler
 }
 
 func NewHandlers(service service.MetricsService, db *pgxpool.Pool) *Handlers {
@@ -26,6 +27,7 @@ func NewHandlers(service service.MetricsService, db *pgxpool.Pool) *Handlers {
 		UpdateURL:  NewUpdateURLHandler(service),
 		ValueURL:   NewValueURLHandler(service),
 		Ping:       NewPingHandler(checker),
+		Updates:    NewUpdatesHandler(service),
 	}
 
 }

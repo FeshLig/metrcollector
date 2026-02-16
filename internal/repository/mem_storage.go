@@ -58,14 +58,16 @@ func (m *MemStorage) GetCounter(ctx context.Context, name string) (metric.Counte
 	return counter, ok
 }
 
-func (m *MemStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) {
+func (m *MemStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) error {
 	for name, value := range gauges {
 		m.SetGauge(ctx, name, value)
 	}
 
 	for name, value := range counters {
-		m.SetCounter(name, value)
+		m.AddCounter(ctx, name, value)
 	}
+
+	return nil
 }
 
 func (m *MemStorage) SnapshotGauges(ctx context.Context) map[string]metric.Gauge {

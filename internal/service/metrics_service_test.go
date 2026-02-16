@@ -54,13 +54,14 @@ func (m *mockStorage) SnapshotCounters(ctx context.Context) map[string]metric.Co
 	return m.counters
 }
 
-func (m *mockStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) {
+func (m *mockStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) error {
 	for name, value := range gauges {
 		m.gauges[name] = value
 	}
 	for name, value := range counters {
 		m.counters[name] = value
 	}
+	return nil
 }
 
 func (m *mockStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Gauge, map[string]metric.Counter) {

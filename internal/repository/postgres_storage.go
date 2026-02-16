@@ -2,11 +2,14 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/FeshLig/metrcollector/internal/metric"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// TODO: добавить всем методам ошибки на return
 
 const (
 	gaugeStr   = "gauge"
@@ -140,14 +143,57 @@ func (p *PostgresStorage) SnapshotCounters(ctx context.Context) map[string]metri
 
 }
 
-func (p *PostgresStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) {
+func (p *PostgresStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) error {
+
+	tx, err := p.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	batch := &pgx.Batch{}
+
 	for name, value := range gauges {
-		p.SetGauge(ctx, name, value)
+		batch.Queue(`
+                INSERT INTO metrics (name, type, gauge) 
+				VALUES ($1, $2, $3) 
+				ON CONFLICT (name, type) 
+				DO UPDATE SET gauge = EXCLUDED.gauge
+            `, name, gaugeStr, value)
 	}
 
 	for name, value := range counters {
-		p.SetCounter(name, value)
+		batch.Queue(`
+				INSERT INTO metrics (name, type, counter) 
+				VALUES ($1, $2, $3) 
+				ON CONFLICT (name, type) 
+				DO UPDATE SET counter = metrics.counter + EXCLUDED.counter
+			`, name, counterStr, value)
 	}
+
+	br := tx.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := br.Exec()
+		if err != nil {
+			br.Close()
+			return err
+		}
+	}
+
+	if err := br.Close(); err != nil {
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		fmt.Printf("%s\n", err.Error())
+		return err
+	} else {
+		fmt.Println("commit ok")
+	}
+	return nil
+
 }
 
 func (p *PostgresStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Gauge, map[string]metric.Counter) {

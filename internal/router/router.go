@@ -27,6 +27,7 @@ func NewRouter(handlers *handler.Handlers) *gin.Engine {
 	r.POST("/update/:type/:name/:value/", handlers.UpdateURL.UpdateFromURL)
 	r.GET("/value/:type/:name/", handlers.ValueURL.ValueFromURL)
 	r.GET("/ping/", handlers.Ping.PingPage)
+	r.POST("/updates/", handlers.Updates.Updates)
 
 	return r
 

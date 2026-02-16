@@ -15,7 +15,7 @@ import (
 )
 
 type MetricsSender interface {
-	Send(metric *dto.Metrics) error
+	SendBatch(metrics []dto.Metrics) error
 }
 
 type HTTPSender struct {
@@ -55,7 +55,49 @@ func (h *HTTPSender) Send(metric *dto.Metrics) error {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
-	// req.Header.Set("Accept-Encoding", "gzip")
+
+	resp, err := h.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
+
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	body, err := json.Marshal(metrics)
+	if err != nil {
+		return fmt.Errorf("marshal metric: %w", err)
+	}
+
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+
+	if _, err := gz.Write(body); err != nil {
+		return fmt.Errorf("gzip write: %w", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("gzip close: %w", err)
+	}
+
+	url := fmt.Sprintf("%s/updates/", h.BaseURL)
+	req, err := http.NewRequest("POST", url, &buf)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
 
 	resp, err := h.Client.Do(req)
 	if err != nil {
@@ -101,6 +143,37 @@ func (h *HTTPSender) SendMetrics(storage repository.Storage) {
 
 }
 
+func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) {
+
+	gauges := storage.SnapshotGauges(context.TODO())
+	counters := storage.SnapshotCounters(context.TODO())
+
+	metrics := make([]dto.Metrics, 0, len(gauges)+len(counters))
+
+	for name, value := range gauges {
+		v := float64(value)
+		metrics = append(metrics, dto.Metrics{
+			ID:    name,
+			MType: "gauge",
+			Value: &v,
+		})
+	}
+
+	for name, value := range counters {
+		v := int64(value)
+		metrics = append(metrics, dto.Metrics{
+			ID:    name,
+			MType: "counter",
+			Delta: &v,
+		})
+	}
+
+	if err := h.SendBatch(metrics); err != nil {
+		log.Printf("batch send error: %v", err)
+	}
+
+}
+
 func RunSender(storage *repository.MemStorage, options Options) {
 	client := &http.Client{}
 
@@ -117,13 +190,13 @@ func RunSender(storage *repository.MemStorage, options Options) {
 		select {
 
 		case <-pollTicker.C:
-			go collector.CollectMetrics()
+			collector.CollectMetrics()
 
 		case <-reportTicker.C:
-			go func() {
-				sender.SendMetrics(storage)
-				storage.SetCounter("PollCount", 0)
-			}()
+
+			sender.SendBatchMetrics(storage)
+			storage.SetCounter("PollCount", 0)
+
 		}
 	}
 

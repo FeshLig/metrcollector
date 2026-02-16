@@ -11,6 +11,7 @@ import (
 
 type MetricsService interface {
 	Update(m dto.Metrics) error
+	Updates(m []dto.Metrics) error
 	Get(m dto.Metrics) (dto.Metrics, error)
 	SnapshotGaugeMetrics() []dto.Metrics
 	SnapshotCounterMetrics() []dto.Metrics
@@ -38,6 +39,7 @@ func NewMetricService(
 	}
 }
 
+// TODO: Исправить запись в файл при наличии бд
 func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 
 	name := m.ID
@@ -75,6 +77,56 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 			Msg:  fmt.Sprintf("unknown metric type: %s", metricType),
 		}
 
+	}
+
+	return nil
+
+}
+
+// TODO: Исправить запись в файл при наличии бд
+func (s *MetricServiceImpl) Updates(m []dto.Metrics) error {
+
+	gauges := make(map[string]metric.Gauge)
+	counters := make(map[string]metric.Counter)
+
+	for _, mVal := range m {
+		name := mVal.ID
+		metricType := mVal.MType
+
+		switch metricType {
+
+		case dto.Gauge:
+			if mVal.Value == nil {
+				return &ServiceError{
+					Code: ErrInvalidValue,
+					Msg:  "empty gauge value",
+				}
+			}
+			gauges[name] = metric.Gauge(*mVal.Value)
+
+		case dto.Counter:
+			if mVal.Delta == nil {
+				return &ServiceError{
+					Code: ErrInvalidValue,
+					Msg:  "empty counter delta",
+				}
+			}
+			counters[name] = metric.Counter(*mVal.Delta)
+
+		default:
+			return &ServiceError{
+				Code: ErrInvalidType,
+				Msg:  fmt.Sprintf("unknown metric type: %s", metricType),
+			}
+
+		}
+	}
+
+	if err := s.storage.SetMetrics(context.TODO(), gauges, counters); err != nil {
+		return err
+	}
+	if s.syncSave {
+		s.persister.SaveNow()
 	}
 
 	return nil
