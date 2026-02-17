@@ -80,7 +80,6 @@ func newStartupContext() (context.Context, context.CancelFunc) {
 
 func newDB(ctx context.Context, cfg config.Options) (*pgxpool.Pool, error) {
 
-	// dsn := "postgres://metrics:Fjytotbytn4rjtvju@localhost:5432/metrics"
 	dsn := cfg.DatabaseDSN.String()
 
 	if err := repository.RunMigrations(dsn); err != nil {

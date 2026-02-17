@@ -39,7 +39,6 @@ func NewMetricService(
 	}
 }
 
-// TODO: Исправить запись в файл при наличии бд
 func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 
 	name := m.ID
@@ -83,7 +82,6 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 
 }
 
-// TODO: Исправить запись в файл при наличии бд
 func (s *MetricServiceImpl) Updates(m []dto.Metrics) error {
 
 	gauges := make(map[string]metric.Gauge)
