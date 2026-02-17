@@ -43,10 +43,11 @@ func (m *MemStorage) AddCounter(ctx context.Context, name string, delta metric.C
 	return nil
 }
 
-func (m *MemStorage) SetCounter(name string, value metric.Counter) {
+func (m *MemStorage) SetCounter(ctx context.Context, name string, value metric.Counter) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.counters[name] = m.counters[name].SetCounter(value)
+	return nil
 }
 
 func (m *MemStorage) GetCounter(ctx context.Context, name string) (metric.Counter, bool) {

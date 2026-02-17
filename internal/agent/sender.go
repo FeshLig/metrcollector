@@ -5,9 +5,12 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
@@ -91,25 +94,37 @@ func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 	}
 
 	url := fmt.Sprintf("%s/updates/", h.BaseURL)
-	req, err := http.NewRequest("POST", url, &buf)
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
+	return withRetry(context.TODO(), func() error {
 
-	resp, err := h.Client.Do(req)
-	if err != nil {
-		return fmt.Errorf("send request: %w", err)
-	}
-	defer resp.Body.Close()
+		req, err := http.NewRequest(
+			"POST",
+			url,
+			bytes.NewReader(buf.Bytes()),
+		)
+		if err != nil {
+			return fmt.Errorf("create request: %w", err)
+		}
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %d", resp.StatusCode)
-	}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Encoding", "gzip")
 
-	return nil
+		resp, err := h.Client.Do(req)
+		if err != nil {
+			return fmt.Errorf("send request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 500 {
+			return fmt.Errorf("server error: %d", resp.StatusCode)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("bad status: %d", resp.StatusCode)
+		}
+		return nil
+	})
+
 }
 
 func (h *HTTPSender) SendMetrics(storage repository.Storage) {
@@ -143,7 +158,7 @@ func (h *HTTPSender) SendMetrics(storage repository.Storage) {
 
 }
 
-func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) {
+func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) error {
 
 	gauges := storage.SnapshotGauges(context.TODO())
 	counters := storage.SnapshotCounters(context.TODO())
@@ -169,8 +184,10 @@ func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) {
 	}
 
 	if err := h.SendBatch(metrics); err != nil {
-		log.Printf("batch send error: %v", err)
+		return fmt.Errorf("batch send error: %v", err)
 	}
+
+	return nil
 
 }
 
@@ -194,10 +211,56 @@ func RunSender(storage *repository.MemStorage, options Options) {
 
 		case <-reportTicker.C:
 
-			sender.SendBatchMetrics(storage)
-			storage.SetCounter("PollCount", 0)
+			if err := sender.SendBatchMetrics(storage); err == nil {
+				storage.SetCounter(context.TODO(), "PollCount", 0)
+			}
 
 		}
 	}
 
+}
+
+func withRetry(ctx context.Context, fn func() error) error {
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+
+		err := fn()
+		if err == nil {
+			return nil
+		}
+
+		if !isRetriable(err) {
+			return err
+		}
+
+		lastErr = err
+
+		if attempt == maxRetries {
+			break
+		}
+
+		backoff := time.Duration(1+2*attempt) * time.Second
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+
+	return lastErr
+}
+
+func isRetriable(err error) bool {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	if strings.Contains(err.Error(), "server error") {
+		return true
+	}
+
+	return false
 }
