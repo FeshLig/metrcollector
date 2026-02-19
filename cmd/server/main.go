@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -12,23 +11,21 @@ import (
 	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/FeshLig/metrcollector/internal/router"
 	"github.com/FeshLig/metrcollector/internal/service"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
 
-	err := Run()
+	err := run()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 }
 
-func Run() error {
+func run() error {
 
 	var storage repository.Storage
-	var db *pgxpool.Pool
-	var err error
+	var persister *persister.FilePersister
 
 	cfg := config.GetOptions()
 
@@ -37,7 +34,7 @@ func Run() error {
 
 	if cfg.DatabaseDSN.String() != "" {
 
-		db, err = newDB(ctx, cfg)
+		s, db, err := newDB(ctx, cfg)
 		if err != nil {
 			return err
 		}
@@ -45,21 +42,21 @@ func Run() error {
 			defer db.Close()
 		}
 
-		storage = repository.NewPostgresStorage(db)
+		persister = nil
+		storage = s
 
 	} else {
 
 		storage = repository.NewMemStorage()
+		persister, err := newPersister(cfg, storage)
+		if err != nil {
+			return err
+		}
+		defer persister.Stop()
 	}
-
-	persister, err := newPersister(cfg, storage)
-	if err != nil {
-		return err
-	}
-	defer persister.Stop()
 
 	service := NewService(cfg, storage, persister)
-	handlers := handler.NewHandlers(service, db)
+	handlers := handler.NewHandlers(service)
 	router := router.NewRouter(handlers)
 
 	if err := router.Run(cfg.Address.String()); err != nil {
@@ -78,20 +75,18 @@ func newStartupContext() (context.Context, context.CancelFunc) {
 
 }
 
-func newDB(ctx context.Context, cfg config.Options) (*pgxpool.Pool, error) {
+func newDB(ctx context.Context, cfg config.Options) (*repository.PostgresStorage, *repository.Postgres, error) {
 
 	dsn := cfg.DatabaseDSN.String()
 
-	if err := repository.RunMigrations(dsn); err != nil {
-		return nil, err
-	}
-
-	db, err := pgxpool.New(ctx, dsn)
+	db, err := repository.NewPostgres(ctx, dsn)
 	if err != nil {
-		return nil, fmt.Errorf("db init failed: %w", err)
+		return nil, nil, err
 	}
 
-	return db, nil
+	storage := repository.NewPostgresStorage(db)
+
+	return storage, db, nil
 
 }
 

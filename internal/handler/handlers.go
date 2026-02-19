@@ -1,9 +1,7 @@
 package handler
 
 import (
-	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/FeshLig/metrcollector/internal/service"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Handlers struct {
@@ -16,9 +14,7 @@ type Handlers struct {
 	Updates    *UpdatesHandler
 }
 
-func NewHandlers(service service.MetricsService, db *pgxpool.Pool) *Handlers {
-
-	checker := repository.NewDBChecker(db)
+func NewHandlers(service service.MetricsService) *Handlers {
 
 	return &Handlers{
 		Root:       NewRootHandler(service),
@@ -26,7 +22,7 @@ func NewHandlers(service service.MetricsService, db *pgxpool.Pool) *Handlers {
 		ValueJSON:  NewValueJSONHandler(service),
 		UpdateURL:  NewUpdateURLHandler(service),
 		ValueURL:   NewValueURLHandler(service),
-		Ping:       NewPingHandler(checker),
+		Ping:       NewPingHandler(service),
 		Updates:    NewUpdatesHandler(service),
 	}
 

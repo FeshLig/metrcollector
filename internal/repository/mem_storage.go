@@ -8,7 +8,7 @@ import (
 )
 
 type MemStorage struct {
-	mu       sync.RWMutex
+	mu       sync.Mutex
 	gauges   map[string]metric.Gauge
 	counters map[string]metric.Counter
 }
@@ -97,4 +97,8 @@ func (m *MemStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Gau
 	counters := m.SnapshotCounters(ctx)
 
 	return gauges, counters
+}
+
+func (m *MemStorage) Check(ctx context.Context) error {
+	return nil
 }

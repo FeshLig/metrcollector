@@ -1,31 +1,29 @@
 package handler
 
 import (
-	"context"
+	"log"
 	"net/http"
 
+	"github.com/FeshLig/metrcollector/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
-type CheckDB interface {
-	Check(ctx context.Context) error
-}
-
 type PingHandler struct {
-	checker CheckDB
+	service service.MetricsService
 }
 
-func NewPingHandler(checker CheckDB) *PingHandler {
+func NewPingHandler(service service.MetricsService) *PingHandler {
 	return &PingHandler{
-		checker: checker,
+		service: service,
 	}
 }
 
 func (h *PingHandler) PingPage(c *gin.Context) {
 
-	err := h.checker.Check(c.Request.Context())
+	err := h.service.Check(c.Request.Context())
 	if err != nil {
-		c.String(http.StatusInternalServerError, "database ping error")
+		log.Printf("database ping error: %v\n", err)
+		c.String(http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 

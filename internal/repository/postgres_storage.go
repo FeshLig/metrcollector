@@ -21,15 +21,15 @@ type PostgresStorage struct {
 	db *pgxpool.Pool
 }
 
-func NewPostgresStorage(db *pgxpool.Pool) *PostgresStorage {
+func NewPostgresStorage(db *Postgres) *PostgresStorage {
 	return &PostgresStorage{
-		db: db,
+		db: db.pool,
 	}
 }
 
 func (p *PostgresStorage) SetGauge(ctx context.Context, name string, value metric.Gauge) error {
-	return withRetry(ctx, func() error {
-		_, err := p.db.Exec(ctx,
+	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx,
 			`INSERT INTO metrics (name, type, gauge) 
 			VALUES ($1, $2, $3) 
 			ON CONFLICT (name, type) 
@@ -41,8 +41,8 @@ func (p *PostgresStorage) SetGauge(ctx context.Context, name string, value metri
 }
 
 func (p *PostgresStorage) AddCounter(ctx context.Context, name string, value metric.Counter) error {
-	return withRetry(ctx, func() error {
-		_, err := p.db.Exec(ctx,
+	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx,
 			`INSERT INTO metrics (name, type, counter) 
 			VALUES ($1, $2, $3) 
 			ON CONFLICT (name, type) 
@@ -58,8 +58,8 @@ func (p *PostgresStorage) GetGauge(ctx context.Context, name string) (metric.Gau
 	var gauge float64
 	found := true
 
-	err := withRetry(ctx, func() error {
-		err := p.db.QueryRow(ctx, `SELECT gauge FROM metrics WHERE type = $1 AND name = $2`, gaugeStr, name).Scan(&gauge)
+	err := p.withTxRetry(ctx, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `SELECT gauge FROM metrics WHERE type = $1 AND name = $2`, gaugeStr, name).Scan(&gauge)
 		if errors.Is(err, pgx.ErrNoRows) {
 			found = false
 			return nil
@@ -77,8 +77,8 @@ func (p *PostgresStorage) GetCounter(ctx context.Context, name string) (metric.C
 	var counter int64
 	found := true
 
-	err := withRetry(ctx, func() error {
-		err := p.db.QueryRow(ctx, `SELECT counter FROM metrics WHERE type = $1 AND name = $2`, counterStr, name).Scan(&counter)
+	err := p.withTxRetry(ctx, func(tx pgx.Tx) error {
+		err := tx.QueryRow(ctx, `SELECT counter FROM metrics WHERE type = $1 AND name = $2`, counterStr, name).Scan(&counter)
 		if errors.Is(err, pgx.ErrNoRows) {
 			found = false
 			return nil
@@ -92,8 +92,8 @@ func (p *PostgresStorage) GetCounter(ctx context.Context, name string) (metric.C
 }
 
 func (p *PostgresStorage) SetCounter(ctx context.Context, name string, value metric.Counter) error {
-	return withRetry(ctx, func() error {
-		_, err := p.db.Exec(ctx,
+	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx,
 			`INSERT INTO metrics (name, type, counter) 
 			VALUES ($1, $2, $3) 
 			ON CONFLICT (name, type) 
@@ -104,10 +104,13 @@ func (p *PostgresStorage) SetCounter(ctx context.Context, name string, value met
 }
 
 func (p *PostgresStorage) SnapshotGauges(ctx context.Context) map[string]metric.Gauge {
-	gauges := make(map[string]metric.Gauge)
 
-	err := withRetry(ctx, func() error {
-		q, err := p.db.Query(ctx, `SELECT name, gauge FROM metrics WHERE type = $1`, gaugeStr)
+	var result map[string]metric.Gauge
+
+	err := p.withTxRetry(ctx, func(tx pgx.Tx) error {
+
+		gauges := make(map[string]metric.Gauge)
+		q, err := tx.Query(ctx, `SELECT name, gauge FROM metrics WHERE type = $1`, gaugeStr)
 		if err != nil {
 			return err
 		}
@@ -126,6 +129,9 @@ func (p *PostgresStorage) SnapshotGauges(ctx context.Context) map[string]metric.
 		if err := q.Err(); err != nil {
 			return err
 		}
+
+		result = gauges
+
 		return nil
 	})
 
@@ -133,15 +139,18 @@ func (p *PostgresStorage) SnapshotGauges(ctx context.Context) map[string]metric.
 		return nil
 	}
 
-	return gauges
+	return result
 
 }
 
 func (p *PostgresStorage) SnapshotCounters(ctx context.Context) map[string]metric.Counter {
-	counters := make(map[string]metric.Counter)
-	err := withRetry(ctx, func() error {
 
-		q, err := p.db.Query(ctx, `SELECT name, counter FROM metrics WHERE type = $1`, counterStr)
+	var result map[string]metric.Counter
+
+	err := p.withTxRetry(ctx, func(tx pgx.Tx) error {
+		counters := make(map[string]metric.Counter)
+
+		q, err := tx.Query(ctx, `SELECT name, counter FROM metrics WHERE type = $1`, counterStr)
 		if err != nil {
 			return err
 		}
@@ -159,26 +168,20 @@ func (p *PostgresStorage) SnapshotCounters(ctx context.Context) map[string]metri
 		if err := q.Err(); err != nil {
 			return err
 		}
-
+		result = counters
 		return nil
 	})
 
 	if err != nil {
 		return nil
 	}
-	return counters
+	return result
 
 }
 
 func (p *PostgresStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) error {
 
-	return withRetry(ctx, func() error {
-
-		tx, err := p.db.Begin(ctx)
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback(ctx)
+	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
 
 		batch := &pgx.Batch{}
 
@@ -201,7 +204,6 @@ func (p *PostgresStorage) SetMetrics(ctx context.Context, gauges map[string]metr
 		}
 
 		br := tx.SendBatch(ctx, batch)
-		// defer br.Close()
 
 		for i := 0; i < batch.Len(); i++ {
 			_, err := br.Exec()
@@ -215,9 +217,6 @@ func (p *PostgresStorage) SetMetrics(ctx context.Context, gauges map[string]metr
 			return err
 		}
 
-		if err = tx.Commit(ctx); err != nil {
-			return err
-		}
 		return nil
 	})
 
@@ -230,34 +229,76 @@ func (p *PostgresStorage) SnapshotMetrics(ctx context.Context) (map[string]metri
 	return gauges, counters
 }
 
-func withRetry(ctx context.Context, fn func() error) error {
+func (p *PostgresStorage) withTxRetry(ctx context.Context, fn func(pgx.Tx) error) error {
+
 	const maxRetries = 3
 	var lastErr error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 
-		err := fn()
-		if err == nil {
-			return nil
-		}
+		tx, err := p.db.Begin(ctx)
+		if err != nil {
+			if isRetriable(err) {
+				if attempt == maxRetries {
+					break
+				}
 
-		if !isRetriable(err) {
+				backoff := time.Duration(1+2*attempt) * time.Second
+
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(backoff):
+				}
+				lastErr = err
+				continue
+			}
 			return err
 		}
 
-		lastErr = err
+		err = fn(tx)
+		if err != nil {
+			tx.Rollback(ctx)
 
-		if attempt == maxRetries {
-			break
+			if isRetriable(err) {
+				if attempt == maxRetries {
+					break
+				}
+
+				backoff := time.Duration(1+2*attempt) * time.Second
+
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(backoff):
+				}
+				lastErr = err
+				continue
+			}
+			return err
 		}
 
-		backoff := time.Duration(1+2*attempt) * time.Second
+		err = tx.Commit(ctx)
+		if err != nil {
+			if isRetriable(err) {
+				if attempt == maxRetries {
+					break
+				}
 
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(backoff):
+				backoff := time.Duration(1+2*attempt) * time.Second
+
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(backoff):
+				}
+				lastErr = err
+				continue
+			}
+			return err
 		}
+
+		return nil
 	}
 
 	return lastErr
@@ -271,4 +312,8 @@ func isRetriable(err error) bool {
 	}
 
 	return false
+}
+
+func (p *PostgresStorage) Check(ctx context.Context) error {
+	return p.db.Ping(ctx)
 }

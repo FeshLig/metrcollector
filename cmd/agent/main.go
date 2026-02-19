@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/FeshLig/metrcollector/internal/agent"
 	"github.com/FeshLig/metrcollector/internal/repository"
 )
@@ -11,6 +13,8 @@ func main() {
 
 	storage := repository.NewMemStorage()
 
-	agent.RunSender(storage, options)
+	if err := agent.RunSender(storage, options); err != nil {
+		log.Printf("agent error: %v\n", err)
+	}
 
 }

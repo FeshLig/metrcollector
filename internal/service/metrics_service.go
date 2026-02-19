@@ -15,6 +15,7 @@ type MetricsService interface {
 	Get(m dto.Metrics) (dto.Metrics, error)
 	SnapshotGaugeMetrics() []dto.Metrics
 	SnapshotCounterMetrics() []dto.Metrics
+	Check(ctx context.Context) error
 }
 
 type filePrs interface {
@@ -54,7 +55,7 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 			}
 		}
 		s.storage.SetGauge(context.TODO(), name, metric.Gauge(*m.Value))
-		if s.syncSave {
+		if s.syncSave && s.persister != nil {
 			s.persister.SaveNow()
 		}
 
@@ -66,7 +67,7 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 			}
 		}
 		s.storage.AddCounter(context.TODO(), name, metric.Counter(*m.Delta))
-		if s.syncSave {
+		if s.syncSave && s.persister != nil {
 			s.persister.SaveNow()
 		}
 
@@ -123,7 +124,7 @@ func (s *MetricServiceImpl) Updates(m []dto.Metrics) error {
 	if err := s.storage.SetMetrics(context.TODO(), gauges, counters); err != nil {
 		return err
 	}
-	if s.syncSave {
+	if s.syncSave && s.persister != nil {
 		s.persister.SaveNow()
 	}
 
@@ -209,4 +210,8 @@ func (s *MetricServiceImpl) SnapshotCounterMetrics() []dto.Metrics {
 
 	return metrics
 
+}
+
+func (s *MetricServiceImpl) Check(ctx context.Context) error {
+	return s.storage.Check(ctx)
 }

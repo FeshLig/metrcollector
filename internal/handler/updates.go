@@ -24,7 +24,7 @@ func (h *UpdatesHandler) Updates(c *gin.Context) {
 	var metrics []dto.Metrics
 
 	if err := json.NewDecoder(c.Request.Body).Decode(&metrics); err != nil {
-		c.String(http.StatusInternalServerError, "invalid json")
+		c.String(http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 

@@ -1,7 +1,7 @@
 CREATE TABLE metrics (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL,
+    id IDENTITY PRIMARY KEY,
+    name VARCHAR(20) NOT NULL,
+    type VARCHAR(10) NOT NULL,
     gauge DOUBLE PRECISION,
     counter BIGINT,
     UNIQUE (name, type)

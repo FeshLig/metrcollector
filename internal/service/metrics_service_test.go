@@ -71,6 +71,10 @@ func (m *mockStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Ga
 	return gauges, counters
 }
 
+func (m *mockStorage) Check(ctx context.Context) error {
+	return nil
+}
+
 type mockPersister struct {
 	saveCalled bool
 }

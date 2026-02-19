@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -21,55 +20,20 @@ type MetricsSender interface {
 	SendBatch(metrics []dto.Metrics) error
 }
 
-type HTTPSender struct {
-	BaseURL string
-	Client  *http.Client
+type Doer interface {
+	Do(*http.Request) (*http.Response, error)
 }
 
-func NewSender(url string, client *http.Client) *HTTPSender {
+type HTTPSender struct {
+	BaseURL string
+	Client  Doer
+}
+
+func NewSender(url string, client Doer) *HTTPSender {
 	return &HTTPSender{
 		BaseURL: url,
 		Client:  client,
 	}
-}
-
-func (h *HTTPSender) Send(metric *dto.Metrics) error {
-
-	body, err := json.Marshal(metric)
-	if err != nil {
-		return fmt.Errorf("marshal metric: %w", err)
-	}
-
-	var buf bytes.Buffer
-	gz := gzip.NewWriter(&buf)
-
-	if _, err := gz.Write(body); err != nil {
-		return fmt.Errorf("gzip write: %w", err)
-	}
-	if err := gz.Close(); err != nil {
-		return fmt.Errorf("gzip close: %w", err)
-	}
-
-	url := fmt.Sprintf("%s/update/", h.BaseURL)
-	req, err := http.NewRequest("POST", url, &buf)
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
-
-	resp, err := h.Client.Do(req)
-	if err != nil {
-		return fmt.Errorf("send request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %d", resp.StatusCode)
-	}
-
-	return nil
 }
 
 func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
@@ -95,66 +59,36 @@ func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 
 	url := fmt.Sprintf("%s/updates/", h.BaseURL)
 
-	return withRetry(context.TODO(), func() error {
-
-		req, err := http.NewRequest(
-			"POST",
-			url,
-			bytes.NewReader(buf.Bytes()),
-		)
-		if err != nil {
-			return fmt.Errorf("create request: %w", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Content-Encoding", "gzip")
-
-		resp, err := h.Client.Do(req)
-		if err != nil {
-			return fmt.Errorf("send request: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode >= 500 {
-			return fmt.Errorf("server error: %d", resp.StatusCode)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("bad status: %d", resp.StatusCode)
-		}
-		return nil
-	})
-
-}
-
-func (h *HTTPSender) SendMetrics(storage repository.Storage) {
-
-	sender := h
-
-	for name, value := range storage.SnapshotGauges(context.TODO()) {
-		v := float64(value)
-		metric := dto.Metrics{
-			ID:    name,
-			MType: "gauge",
-			Value: &v,
-		}
-
-		if err := sender.Send(&metric); err != nil {
-			log.Printf("ошибка отправки gauge %s: %v", name, err)
-		}
+	req, err := http.NewRequest(
+		"POST",
+		url,
+		bytes.NewReader(buf.Bytes()),
+	)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
 	}
 
-	for name, value := range storage.SnapshotCounters(context.TODO()) {
-		v := int64(value)
-		metric := dto.Metrics{
-			ID:    name,
-			MType: "counter",
-			Delta: &v,
-		}
-		if err := sender.Send(&metric); err != nil {
-			log.Printf("ошибка отправки counter %s: %v", name, err)
-		}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+
+	resp, err := h.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send request: %w", err)
 	}
+	if resp == nil {
+		return errors.New("empty response")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 500 {
+		return fmt.Errorf("server error: %d", resp.StatusCode)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %d", resp.StatusCode)
+	}
+
+	return nil
 
 }
 
@@ -191,11 +125,13 @@ func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) error {
 
 }
 
-func RunSender(storage *repository.MemStorage, options Options) {
-	client := &http.Client{}
+func RunSender(storage *repository.MemStorage, options Options) error {
 
+	baseClient := &http.Client{}
+	retryClient := NewRetryClient(baseClient)
+
+	sender := NewSender("http://"+options.Address.String(), retryClient)
 	collector := NewMetricCollector(storage)
-	sender := NewSender("http://"+options.Address.String(), client)
 
 	pollTicker := time.NewTicker(options.PollInterval.Duration)
 	reportTicker := time.NewTicker(options.ReportInterval.Duration)
@@ -213,6 +149,8 @@ func RunSender(storage *repository.MemStorage, options Options) {
 
 			if err := sender.SendBatchMetrics(storage); err == nil {
 				storage.SetCounter(context.TODO(), "PollCount", 0)
+			} else {
+				return err
 			}
 
 		}
