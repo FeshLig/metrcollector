@@ -1,7 +1,7 @@
 CREATE TABLE metrics (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name VARCHAR(20) NOT NULL,
-    type VARCHAR(10) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(31) NOT NULL,
     gauge DOUBLE PRECISION,
     counter BIGINT,
     UNIQUE (name, type)
