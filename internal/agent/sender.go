@@ -21,7 +21,7 @@ type MetricsSender interface {
 }
 
 type Doer interface {
-	Do(*http.Request) (*http.Response, error)
+	Do(func() (*http.Request, error)) (*http.Response, error)
 }
 
 type HTTPSender struct {
@@ -59,24 +59,42 @@ func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 
 	url := fmt.Sprintf("%s/updates/", h.BaseURL)
 
-	req, err := http.NewRequest(
-		"POST",
-		url,
-		bytes.NewReader(buf.Bytes()),
-	)
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
+	// req, err := http.NewRequest(
+	// 	"POST",
+	// 	url,
+	// 	bytes.NewReader(buf.Bytes()),
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("create request: %w", err)
+	// }
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
+	// req.Header.Set("Content-Type", "application/json")
+	// req.Header.Set("Content-Encoding", "gzip")
 
-	resp, err := h.Client.Do(req)
+	// resp, err := h.Client.Do(req)
+	// if err != nil {
+	// 	return fmt.Errorf("send request: %w", err)
+	// }
+	// defer resp.Body.Close()
+
+	resp, err := h.Client.Do(func() (*http.Request, error) {
+
+		req, err := http.NewRequest(
+			"POST",
+			url,
+			bytes.NewReader(buf.Bytes()),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Encoding", "gzip")
+
+		return req, nil
+	})
 	if err != nil {
 		return fmt.Errorf("send request: %w", err)
-	}
-	if resp == nil {
-		return errors.New("empty response")
 	}
 	defer resp.Body.Close()
 
