@@ -78,6 +78,8 @@ func newStartupContext() (context.Context, context.CancelFunc) {
 func newDB(ctx context.Context, cfg config.Options) (*repository.PostgresStorage, *repository.Postgres, error) {
 
 	dsn := cfg.DatabaseDSN.String()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	db, err := repository.NewPostgres(ctx, dsn)
 	if err != nil {
