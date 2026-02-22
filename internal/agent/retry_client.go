@@ -15,29 +15,31 @@ func NewRetryClient(client *http.Client) *RetryClient {
 }
 
 func (r *RetryClient) Do(newReq func() (*http.Request, error)) (*http.Response, error) {
-
 	var resp *http.Response
-	var err error
 
-	err = withRetry(context.TODO(), func() error {
-
+	err := withRetry(context.TODO(), func() error {
 		req, err := newReq()
 		if err != nil {
 			return err
 		}
 
-		resp, err = r.client.Do(req)
+		tmpResp, err := r.client.Do(req)
 		if err != nil {
 			return err
 		}
 
-		if resp.StatusCode >= 500 {
-			resp.Body.Close()
-			return fmt.Errorf("server error: %d", resp.StatusCode)
+		if tmpResp.StatusCode >= 500 {
+			tmpResp.Body.Close()
+			return fmt.Errorf("server error: %d", tmpResp.StatusCode)
 		}
 
+		resp = tmpResp
 		return nil
 	})
 
-	return resp, err
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
