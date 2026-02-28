@@ -23,7 +23,8 @@ func (w *bodyWriter) Write(b []byte) (int, error) {
 func Hash(key string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		if key == "" {
+		headerHash := c.GetHeader("HashSHA256")
+		if key == "" || headerHash == "" {
 			c.Next()
 			return
 		}
@@ -41,7 +42,7 @@ func Hash(key string) gin.HandlerFunc {
 		h.Write([]byte(key))
 		reqHash := hex.EncodeToString(h.Sum(nil))
 
-		if c.GetHeader("HashSHA256") != reqHash {
+		if headerHash != reqHash {
 			c.AbortWithStatus(http.StatusBadRequest)
 			return
 		}
