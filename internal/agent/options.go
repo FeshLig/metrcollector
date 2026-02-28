@@ -13,6 +13,7 @@ type Options struct {
 	Address        flags.NetAddress
 	ReportInterval flags.SecondsDuration
 	PollInterval   flags.SecondsDuration
+	Key            flags.Key
 }
 
 func GetOptions() Options {
@@ -31,6 +32,7 @@ func GetOptions() Options {
 		PollInterval: flags.SecondsDuration{
 			Duration: defaultPollInterval,
 		},
+		Key: "",
 	}
 
 	parseFlags(&options)
@@ -45,6 +47,7 @@ func parseFlags(options *Options) {
 	flag.Var(&options.Address, "a", "net address host:port")
 	flag.Var(&options.ReportInterval, "r", "frequency of sending metrics")
 	flag.Var(&options.PollInterval, "p", "metrics polling frequency")
+	flag.Var(&options.Key, "k", "hash key")
 
 	flag.Parse()
 
@@ -66,6 +69,12 @@ func parseEnv(options *Options) error {
 	if pollStr, ok := os.LookupEnv("POLL_INTERVAL"); ok {
 		if err := options.PollInterval.Set(pollStr); err != nil {
 			return fmt.Errorf("wrong value of POLL_INTERVAL: %w", err)
+		}
+	}
+	if keyStr, ok := os.LookupEnv("KEY"); ok {
+		err := options.Key.Set(keyStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of KEY: %w", err)
 		}
 	}
 

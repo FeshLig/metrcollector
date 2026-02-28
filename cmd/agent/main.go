@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/FeshLig/metrcollector/internal/agent"
@@ -13,7 +14,9 @@ func main() {
 
 	storage := repository.NewMemStorage()
 
-	if err := agent.RunSender(storage, options); err != nil {
+	ctx := context.Background()
+
+	if err := agent.RunSender(ctx, storage, options); err != nil {
 		log.Printf("agent error: %v\n", err)
 	}
 

@@ -1,13 +1,14 @@
 package router
 
 import (
+	"github.com/FeshLig/metrcollector/internal/config"
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/middleware"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func NewRouter(handlers *handler.Handlers) *gin.Engine {
+func NewRouter(handlers *handler.Handlers, cfg config.Options) *gin.Engine {
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {
@@ -17,7 +18,7 @@ func NewRouter(handlers *handler.Handlers) *gin.Engine {
 	defer logger.Sync()
 
 	r := gin.New()
-	r.Use(middleware.Logger(logger), middleware.Gzip(), gin.Recovery())
+	r.Use(middleware.Logger(logger), middleware.Gzip(), middleware.Hash(cfg.Key.String()), gin.Recovery())
 
 	r.LoadHTMLGlob("./internal/templates/*")
 
