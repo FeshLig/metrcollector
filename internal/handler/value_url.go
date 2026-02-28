@@ -36,11 +36,11 @@ func (h *ValueURLHandler) ValueFromURL(c *gin.Context) {
 	}
 
 	switch result.MType {
-	case "gauge":
+	case dto.Gauge:
 
 		c.String(http.StatusOK, strconv.FormatFloat(*result.Value, 'f', -1, 64))
 
-	case "counter":
+	case dto.Counter:
 
 		c.String(http.StatusOK, strconv.FormatInt(*result.Delta, 10))
 

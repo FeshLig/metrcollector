@@ -1,6 +1,7 @@
 package agent_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,7 +38,7 @@ func TestMetricsCollector_PollCount(t *testing.T) {
 				collector.CollectMetrics()
 			}
 
-			counters := storage.SnapshotCounters()
+			counters := storage.SnapshotCounters(context.TODO())
 
 			got, ok := counters["PollCount"]
 			require.True(t, ok, "PollCount must exist")

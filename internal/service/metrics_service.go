@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
@@ -10,9 +11,11 @@ import (
 
 type MetricsService interface {
 	Update(m dto.Metrics) error
+	Updates(m []dto.Metrics) error
 	Get(m dto.Metrics) (dto.Metrics, error)
 	SnapshotGaugeMetrics() []dto.Metrics
 	SnapshotCounterMetrics() []dto.Metrics
+	Check(ctx context.Context) error
 }
 
 type filePrs interface {
@@ -44,27 +47,27 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 
 	switch metricType {
 
-	case "gauge":
+	case dto.Gauge:
 		if m.Value == nil {
 			return &ServiceError{
 				Code: ErrInvalidValue,
 				Msg:  "empty gauge value",
 			}
 		}
-		s.storage.SetGauge(name, metric.Gauge(*m.Value))
-		if s.syncSave {
+		s.storage.SetGauge(context.TODO(), name, metric.Gauge(*m.Value))
+		if s.syncSave && s.persister != nil {
 			s.persister.SaveNow()
 		}
 
-	case "counter":
+	case dto.Counter:
 		if m.Delta == nil {
 			return &ServiceError{
 				Code: ErrInvalidValue,
 				Msg:  "empty counter delta",
 			}
 		}
-		s.storage.AddCounter(name, metric.Counter(*m.Delta))
-		if s.syncSave {
+		s.storage.AddCounter(context.TODO(), name, metric.Counter(*m.Delta))
+		if s.syncSave && s.persister != nil {
 			s.persister.SaveNow()
 		}
 
@@ -74,6 +77,55 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 			Msg:  fmt.Sprintf("unknown metric type: %s", metricType),
 		}
 
+	}
+
+	return nil
+
+}
+
+func (s *MetricServiceImpl) Updates(m []dto.Metrics) error {
+
+	gauges := make(map[string]metric.Gauge)
+	counters := make(map[string]metric.Counter)
+
+	for _, mVal := range m {
+		name := mVal.ID
+		metricType := mVal.MType
+
+		switch metricType {
+
+		case dto.Gauge:
+			if mVal.Value == nil {
+				return &ServiceError{
+					Code: ErrInvalidValue,
+					Msg:  "empty gauge value",
+				}
+			}
+			gauges[name] = metric.Gauge(*mVal.Value)
+
+		case dto.Counter:
+			if mVal.Delta == nil {
+				return &ServiceError{
+					Code: ErrInvalidValue,
+					Msg:  "empty counter delta",
+				}
+			}
+			counters[name] += metric.Counter(*mVal.Delta)
+
+		default:
+			return &ServiceError{
+				Code: ErrInvalidType,
+				Msg:  fmt.Sprintf("unknown metric type: %s", metricType),
+			}
+
+		}
+	}
+
+	if err := s.storage.SetMetrics(context.TODO(), gauges, counters); err != nil {
+		return err
+	}
+	if s.syncSave && s.persister != nil {
+		s.persister.SaveNow()
 	}
 
 	return nil
@@ -92,8 +144,8 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 
 	switch metricType {
 
-	case "gauge":
-		value, ok := s.storage.GetGauge(name)
+	case dto.Gauge:
+		value, ok := s.storage.GetGauge(context.TODO(), name)
 		if !ok {
 			return m, &ServiceError{
 				Code: ErrNotFound,
@@ -103,8 +155,8 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 		v := float64(value)
 		result.Value = &v
 
-	case "counter":
-		value, ok := s.storage.GetCounter(name)
+	case dto.Counter:
+		value, ok := s.storage.GetCounter(context.TODO(), name)
 		if !ok {
 			return m, &ServiceError{
 				Code: ErrNotFound,
@@ -129,12 +181,12 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 func (s *MetricServiceImpl) SnapshotGaugeMetrics() []dto.Metrics {
 
 	var metrics []dto.Metrics
-	gauges := s.storage.SnapshotGauges()
+	gauges := s.storage.SnapshotGauges(context.TODO())
 	for name, value := range gauges {
 		v := float64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "gauge",
+			MType: dto.Gauge,
 			Value: &v,
 		})
 	}
@@ -146,16 +198,20 @@ func (s *MetricServiceImpl) SnapshotGaugeMetrics() []dto.Metrics {
 func (s *MetricServiceImpl) SnapshotCounterMetrics() []dto.Metrics {
 
 	var metrics []dto.Metrics
-	counters := s.storage.SnapshotCounters()
+	counters := s.storage.SnapshotCounters(context.TODO())
 	for name, value := range counters {
 		v := int64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "counter",
+			MType: dto.Counter,
 			Delta: &v,
 		})
 	}
 
 	return metrics
 
+}
+
+func (s *MetricServiceImpl) Check(ctx context.Context) error {
+	return s.storage.Check(ctx)
 }

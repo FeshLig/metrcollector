@@ -1,6 +1,7 @@
 package persister
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -9,23 +10,19 @@ import (
 
 	"github.com/FeshLig/metrcollector/internal/dto"
 	"github.com/FeshLig/metrcollector/internal/metric"
+	"github.com/FeshLig/metrcollector/internal/repository"
 )
-
-type metricsStorage interface {
-	SnapshotMetrics() (map[string]metric.Gauge, map[string]metric.Counter)
-	SetMetrics(map[string]metric.Gauge, map[string]metric.Counter)
-}
 
 type FilePersister struct {
 	path     string
-	storage  metricsStorage
+	storage  repository.Storage
 	interval time.Duration
 	stop     chan struct{}
 }
 
 func NewFilePersister(
 	path string,
-	storage metricsStorage,
+	storage repository.Storage,
 	interval time.Duration,
 ) *FilePersister {
 	return &FilePersister{
@@ -39,13 +36,13 @@ func NewFilePersister(
 func (p *FilePersister) Save() error {
 
 	var metrics []dto.Metrics
-	gauges, counters := p.storage.SnapshotMetrics()
+	gauges, counters := p.storage.SnapshotMetrics(context.TODO())
 
 	for name, value := range gauges {
 		v := float64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "gauge",
+			MType: dto.Gauge,
 			Value: &v,
 		})
 	}
@@ -53,7 +50,7 @@ func (p *FilePersister) Save() error {
 		v := int64(value)
 		metrics = append(metrics, dto.Metrics{
 			ID:    name,
-			MType: "counter",
+			MType: dto.Counter,
 			Delta: &v,
 		})
 	}
@@ -97,12 +94,12 @@ func (p *FilePersister) Load() error {
 
 	for _, m := range metrics {
 		switch m.MType {
-		case "gauge":
+		case dto.Gauge:
 			if m.Value == nil {
 				return errors.New("gauge value is nil")
 			}
 			gauges[m.ID] = metric.Gauge(*m.Value)
-		case "counter":
+		case dto.Counter:
 			if m.Delta == nil {
 				return errors.New("counter delta is nil")
 			}
@@ -111,7 +108,7 @@ func (p *FilePersister) Load() error {
 			return errors.New("invalid metric type")
 		}
 	}
-	p.storage.SetMetrics(gauges, counters)
+	p.storage.SetMetrics(context.TODO(), gauges, counters)
 
 	return nil
 

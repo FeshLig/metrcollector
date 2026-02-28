@@ -1,23 +1,20 @@
 package agent
 
 import (
+	"context"
 	"math/rand"
 	"runtime"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/metric"
+	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
-type UpdateMetrics interface {
-	SetGauge(name string, value metric.Gauge)
-	AddCounter(name string, delta metric.Counter)
-}
-
 type MetricsCollector struct {
-	storage UpdateMetrics
+	storage repository.Storage
 }
 
-func NewMetricCollector(memStorage UpdateMetrics) *MetricsCollector {
+func NewMetricCollector(memStorage repository.Storage) *MetricsCollector {
 	return &MetricsCollector{
 		storage: memStorage,
 	}
@@ -30,37 +27,37 @@ func (c *MetricsCollector) CollectMetrics() {
 
 	memStorage := c.storage
 
-	memStorage.SetGauge("Alloc", metric.Gauge(m.Alloc))
-	memStorage.SetGauge("BuckHashSys", metric.Gauge(m.BuckHashSys))
-	memStorage.SetGauge("Frees", metric.Gauge(m.Frees))
-	memStorage.SetGauge("GCCPUFraction", metric.Gauge(m.GCCPUFraction))
-	memStorage.SetGauge("GCSys", metric.Gauge(m.GCSys))
-	memStorage.SetGauge("HeapAlloc", metric.Gauge(m.HeapAlloc))
-	memStorage.SetGauge("HeapIdle", metric.Gauge(m.HeapIdle))
-	memStorage.SetGauge("HeapInuse", metric.Gauge(m.HeapInuse))
-	memStorage.SetGauge("HeapObjects", metric.Gauge(m.HeapObjects))
-	memStorage.SetGauge("HeapReleased", metric.Gauge(m.HeapReleased))
-	memStorage.SetGauge("HeapSys", metric.Gauge(m.HeapSys))
-	memStorage.SetGauge("LastGC", metric.Gauge(m.LastGC))
-	memStorage.SetGauge("Lookups", metric.Gauge(m.Lookups))
-	memStorage.SetGauge("MCacheInuse", metric.Gauge(m.MCacheInuse))
-	memStorage.SetGauge("MCacheSys", metric.Gauge(m.MCacheSys))
-	memStorage.SetGauge("MSpanInuse", metric.Gauge(m.MSpanInuse))
-	memStorage.SetGauge("MSpanSys", metric.Gauge(m.MSpanSys))
-	memStorage.SetGauge("Mallocs", metric.Gauge(m.Mallocs))
-	memStorage.SetGauge("NextGC", metric.Gauge(m.NextGC))
-	memStorage.SetGauge("NumForcedGC", metric.Gauge(m.NumForcedGC))
-	memStorage.SetGauge("NumGC", metric.Gauge(m.NumGC))
-	memStorage.SetGauge("OtherSys", metric.Gauge(m.OtherSys))
-	memStorage.SetGauge("PauseTotalNs", metric.Gauge(m.PauseTotalNs))
-	memStorage.SetGauge("StackInuse", metric.Gauge(m.StackInuse))
-	memStorage.SetGauge("StackSys", metric.Gauge(m.StackSys))
-	memStorage.SetGauge("Sys", metric.Gauge(m.Sys))
-	memStorage.SetGauge("TotalAlloc", metric.Gauge(m.TotalAlloc))
+	memStorage.SetGauge(context.TODO(), "Alloc", metric.Gauge(m.Alloc))
+	memStorage.SetGauge(context.TODO(), "BuckHashSys", metric.Gauge(m.BuckHashSys))
+	memStorage.SetGauge(context.TODO(), "Frees", metric.Gauge(m.Frees))
+	memStorage.SetGauge(context.TODO(), "GCCPUFraction", metric.Gauge(m.GCCPUFraction))
+	memStorage.SetGauge(context.TODO(), "GCSys", metric.Gauge(m.GCSys))
+	memStorage.SetGauge(context.TODO(), "HeapAlloc", metric.Gauge(m.HeapAlloc))
+	memStorage.SetGauge(context.TODO(), "HeapIdle", metric.Gauge(m.HeapIdle))
+	memStorage.SetGauge(context.TODO(), "HeapInuse", metric.Gauge(m.HeapInuse))
+	memStorage.SetGauge(context.TODO(), "HeapObjects", metric.Gauge(m.HeapObjects))
+	memStorage.SetGauge(context.TODO(), "HeapReleased", metric.Gauge(m.HeapReleased))
+	memStorage.SetGauge(context.TODO(), "HeapSys", metric.Gauge(m.HeapSys))
+	memStorage.SetGauge(context.TODO(), "LastGC", metric.Gauge(m.LastGC))
+	memStorage.SetGauge(context.TODO(), "Lookups", metric.Gauge(m.Lookups))
+	memStorage.SetGauge(context.TODO(), "MCacheInuse", metric.Gauge(m.MCacheInuse))
+	memStorage.SetGauge(context.TODO(), "MCacheSys", metric.Gauge(m.MCacheSys))
+	memStorage.SetGauge(context.TODO(), "MSpanInuse", metric.Gauge(m.MSpanInuse))
+	memStorage.SetGauge(context.TODO(), "MSpanSys", metric.Gauge(m.MSpanSys))
+	memStorage.SetGauge(context.TODO(), "Mallocs", metric.Gauge(m.Mallocs))
+	memStorage.SetGauge(context.TODO(), "NextGC", metric.Gauge(m.NextGC))
+	memStorage.SetGauge(context.TODO(), "NumForcedGC", metric.Gauge(m.NumForcedGC))
+	memStorage.SetGauge(context.TODO(), "NumGC", metric.Gauge(m.NumGC))
+	memStorage.SetGauge(context.TODO(), "OtherSys", metric.Gauge(m.OtherSys))
+	memStorage.SetGauge(context.TODO(), "PauseTotalNs", metric.Gauge(m.PauseTotalNs))
+	memStorage.SetGauge(context.TODO(), "StackInuse", metric.Gauge(m.StackInuse))
+	memStorage.SetGauge(context.TODO(), "StackSys", metric.Gauge(m.StackSys))
+	memStorage.SetGauge(context.TODO(), "Sys", metric.Gauge(m.Sys))
+	memStorage.SetGauge(context.TODO(), "TotalAlloc", metric.Gauge(m.TotalAlloc))
 
-	memStorage.SetGauge("RandomValue", metric.Gauge(getRandomFloat()))
+	memStorage.SetGauge(context.TODO(), "RandomValue", metric.Gauge(getRandomFloat()))
 
-	memStorage.AddCounter("PollCount", 1)
+	memStorage.AddCounter(context.TODO(), "PollCount", 1)
 }
 
 func getRandomFloat() float64 {

@@ -3,10 +3,13 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
@@ -14,24 +17,32 @@ import (
 )
 
 type MetricsSender interface {
-	Send(metric dto.Metrics) error
+	SendBatch(metrics []dto.Metrics) error
+}
+
+type Doer interface {
+	Do(func() (*http.Request, error)) (*http.Response, error)
 }
 
 type HTTPSender struct {
 	BaseURL string
-	Client  *http.Client
+	Client  Doer
 }
 
-func NewSender(url string, client *http.Client) *HTTPSender {
+func NewSender(url string, client Doer) *HTTPSender {
 	return &HTTPSender{
 		BaseURL: url,
 		Client:  client,
 	}
 }
 
-func (h *HTTPSender) Send(metric dto.Metrics) error {
+func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 
-	body, err := json.Marshal(metric)
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	body, err := json.Marshal(metrics)
 	if err != nil {
 		return fmt.Errorf("marshal metric: %w", err)
 	}
@@ -46,65 +57,81 @@ func (h *HTTPSender) Send(metric dto.Metrics) error {
 		return fmt.Errorf("gzip close: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/update/", h.BaseURL)
-	req, err := http.NewRequest("POST", url, &buf)
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
-	}
+	url := fmt.Sprintf("%s/updates/", h.BaseURL)
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
-	// req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := h.Client.Do(func() (*http.Request, error) {
 
-	resp, err := h.Client.Do(req)
+		req, err := http.NewRequest(
+			"POST",
+			url,
+			bytes.NewReader(buf.Bytes()),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Encoding", "gzip")
+
+		return req, nil
+	})
 	if err != nil {
 		return fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 500 {
+		return fmt.Errorf("server error: %d", resp.StatusCode)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad status: %d", resp.StatusCode)
 	}
 
 	return nil
+
 }
 
-func (h *HTTPSender) SendMetrics(storage repository.Storage) {
+func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) error {
 
-	sender := h
+	gauges := storage.SnapshotGauges(context.TODO())
+	counters := storage.SnapshotCounters(context.TODO())
 
-	for name, value := range storage.SnapshotGauges() {
+	metrics := make([]dto.Metrics, 0, len(gauges)+len(counters))
+
+	for name, value := range gauges {
 		v := float64(value)
-		metric := dto.Metrics{
+		metrics = append(metrics, dto.Metrics{
 			ID:    name,
 			MType: "gauge",
 			Value: &v,
-		}
-
-		if err := sender.Send(metric); err != nil {
-			log.Printf("ошибка отправки gauge %s: %v", name, err)
-		}
+		})
 	}
 
-	for name, value := range storage.SnapshotCounters() {
+	for name, value := range counters {
 		v := int64(value)
-		metric := dto.Metrics{
+		metrics = append(metrics, dto.Metrics{
 			ID:    name,
 			MType: "counter",
 			Delta: &v,
-		}
-		if err := sender.Send(metric); err != nil {
-			log.Printf("ошибка отправки counter %s: %v", name, err)
-		}
+		})
 	}
+
+	if err := h.SendBatch(metrics); err != nil {
+		return fmt.Errorf("batch send error: %v", err)
+	}
+
+	return nil
 
 }
 
-func RunSender(storage *repository.MemStorage, options Options) {
-	client := &http.Client{}
+func RunSender(storage *repository.MemStorage, options Options) error {
 
+	baseClient := &http.Client{}
+	retryClient := NewRetryClient(baseClient)
+
+	sender := NewSender("http://"+options.Address.String(), retryClient)
 	collector := NewMetricCollector(storage)
-	sender := NewSender("http://"+options.Address.String(), client)
 
 	pollTicker := time.NewTicker(options.PollInterval.Duration)
 	reportTicker := time.NewTicker(options.ReportInterval.Duration)
@@ -116,14 +143,62 @@ func RunSender(storage *repository.MemStorage, options Options) {
 		select {
 
 		case <-pollTicker.C:
-			go collector.CollectMetrics()
+			collector.CollectMetrics()
 
 		case <-reportTicker.C:
-			go func() {
-				sender.SendMetrics(storage)
-				storage.SetCounter("PollCount", 0)
-			}()
+
+			if err := sender.SendBatchMetrics(storage); err == nil {
+				storage.SetCounter(context.TODO(), "PollCount", 0)
+			} else {
+				return err
+			}
+
 		}
 	}
 
+}
+
+func withRetry(ctx context.Context, fn func() error) error {
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+
+		err := fn()
+		if err == nil {
+			return nil
+		}
+
+		if !isRetriable(err) {
+			return err
+		}
+
+		lastErr = err
+
+		if attempt == maxRetries {
+			break
+		}
+
+		backoff := time.Duration(1+2*attempt) * time.Second
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+
+	return lastErr
+}
+
+func isRetriable(err error) bool {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	if strings.Contains(err.Error(), "server error") {
+		return true
+	}
+
+	return false
 }
