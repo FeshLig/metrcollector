@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
@@ -135,7 +136,6 @@ func worker(
 	jobs <-chan []dto.Metrics,
 	sender *HTTPSender,
 	key string,
-	storage *repository.MemStorage,
 ) {
 	for {
 		select {
@@ -146,9 +146,7 @@ func worker(
 			if !ok {
 				return
 			}
-			if err := sender.SendBatch(ctx, metrics, key); err == nil {
-				storage.SetCounter(context.TODO(), "PollCount", 0)
-			}
+			sender.SendBatch(ctx, metrics, key)
 		}
 	}
 }
@@ -168,18 +166,29 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 	defer reportTicker.Stop()
 
 	jobs := make(chan []dto.Metrics, options.RateLimit)
+	collectCh := make(chan struct{})
+
+	var pollCount int64
+	var mu sync.Mutex
 
 	for i := 0; i < int(options.RateLimit); i++ {
-		go worker(ctx, jobs, sender, key, storage)
+		go worker(ctx, jobs, sender, key)
 	}
 
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
+				close(collectCh)
 				return
 			case <-pollTicker.C:
 				collector.CollectMetrics()
+
+				mu.Lock()
+				pollCount++
+				mu.Unlock()
+
+				collectCh <- struct{}{}
 			}
 		}
 	}()
@@ -189,7 +198,7 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 			select {
 			case <-ctx.Done():
 				return
-			case <-pollTicker.C:
+			case <-collectCh:
 				collector.CollectGopsutil()
 			}
 		}
@@ -203,6 +212,15 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 			case <-reportTicker.C:
 				metrics := buildBatch(storage)
 				if len(metrics) > 0 {
+					mu.Lock()
+					currentPollCount := pollCount
+					pollCount = 0
+					mu.Unlock()
+					metrics = append(metrics, dto.Metrics{
+						ID:    "PollCount",
+						MType: "counter",
+						Delta: &currentPollCount,
+					})
 					jobs <- metrics
 				}
 			}

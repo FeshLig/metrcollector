@@ -60,7 +60,7 @@ func (c *MetricsCollector) CollectMetrics() {
 
 	memStorage.SetGauge(context.TODO(), "RandomValue", metric.Gauge(getRandomFloat()))
 
-	memStorage.AddCounter(context.TODO(), "PollCount", 1)
+	// memStorage.AddCounter(context.TODO(), "PollCount", 1)
 }
 
 func (c *MetricsCollector) CollectGopsutil() error {
