@@ -14,6 +14,7 @@ type Options struct {
 	ReportInterval flags.SecondsDuration
 	PollInterval   flags.SecondsDuration
 	Key            flags.Key
+	RateLimit      flags.RateLimit
 }
 
 func GetOptions() Options {
@@ -32,7 +33,8 @@ func GetOptions() Options {
 		PollInterval: flags.SecondsDuration{
 			Duration: defaultPollInterval,
 		},
-		Key: "",
+		Key:       "",
+		RateLimit: flags.RateLimit(5),
 	}
 
 	parseFlags(&options)
@@ -48,6 +50,7 @@ func parseFlags(options *Options) {
 	flag.Var(&options.ReportInterval, "r", "frequency of sending metrics")
 	flag.Var(&options.PollInterval, "p", "metrics polling frequency")
 	flag.Var(&options.Key, "k", "hash key")
+	flag.Var(&options.Key, "l", "rate limit")
 
 	flag.Parse()
 
@@ -75,6 +78,12 @@ func parseEnv(options *Options) error {
 		err := options.Key.Set(keyStr)
 		if err != nil {
 			return fmt.Errorf("wrong value of KEY: %w", err)
+		}
+	}
+	if rateStr, ok := os.LookupEnv("RATE_LIMIT"); ok {
+		err := options.RateLimit.Set(rateStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of RATE_LIMIT: %w", err)
 		}
 	}
 

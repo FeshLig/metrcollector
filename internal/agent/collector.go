@@ -2,12 +2,15 @@ package agent
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"runtime"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/metric"
 	"github.com/FeshLig/metrcollector/internal/repository"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type MetricsCollector struct {
@@ -58,6 +61,29 @@ func (c *MetricsCollector) CollectMetrics() {
 	memStorage.SetGauge(context.TODO(), "RandomValue", metric.Gauge(getRandomFloat()))
 
 	memStorage.AddCounter(context.TODO(), "PollCount", 1)
+}
+
+func (c *MetricsCollector) CollectGopsutil() error {
+
+	m, err := mem.VirtualMemory()
+	if err != nil {
+		return err
+	}
+
+	c.storage.SetGauge(context.TODO(), "TotalMemory", metric.Gauge(m.Total))
+	c.storage.SetGauge(context.TODO(), "FreeMemory", metric.Gauge(m.Free))
+
+	percents, err := cpu.Percent(0, true)
+	if err != nil {
+		return err
+	}
+
+	for i, percent := range percents {
+		name := fmt.Sprintf("CPUutilization%d", i+1)
+		c.storage.SetGauge(context.TODO(), name, metric.Gauge(percent))
+	}
+
+	return nil
 }
 
 func getRandomFloat() float64 {

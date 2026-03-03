@@ -103,8 +103,7 @@ func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key s
 
 }
 
-func (h *HTTPSender) SendBatchMetrics(ctx context.Context, storage repository.Storage, key string) error {
-
+func buildBatch(storage repository.Storage) []dto.Metrics {
 	gauges := storage.SnapshotGauges(context.TODO())
 	counters := storage.SnapshotCounters(context.TODO())
 
@@ -128,15 +127,33 @@ func (h *HTTPSender) SendBatchMetrics(ctx context.Context, storage repository.St
 		})
 	}
 
-	if err := h.SendBatch(ctx, metrics, key); err != nil {
-		return fmt.Errorf("batch send error: %v", err)
-	}
-
-	return nil
-
+	return metrics
 }
 
-func RunSender(ctx context.Context, storage *repository.MemStorage, options Options) error {
+func worker(
+	ctx context.Context,
+	jobs <-chan []dto.Metrics,
+	sender *HTTPSender,
+	key string,
+	storage *repository.MemStorage,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case metrics, ok := <-jobs:
+			if !ok {
+				return
+			}
+			if err := sender.SendBatch(ctx, metrics, key); err == nil {
+				storage.SetCounter(context.TODO(), "PollCount", 0)
+			}
+		}
+	}
+}
+
+func RunSender(ctx context.Context, storage *repository.MemStorage, options Options) {
 
 	baseClient := &http.Client{}
 	retryClient := NewRetryClient(baseClient)
@@ -147,26 +164,51 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 
 	pollTicker := time.NewTicker(options.PollInterval.Duration)
 	reportTicker := time.NewTicker(options.ReportInterval.Duration)
-
 	defer pollTicker.Stop()
 	defer reportTicker.Stop()
 
-	for {
+	jobs := make(chan []dto.Metrics, options.RateLimit)
 
-		select {
-
-		case <-pollTicker.C:
-			collector.CollectMetrics()
-
-		case <-reportTicker.C:
-
-			if err := sender.SendBatchMetrics(ctx, storage, key); err == nil {
-				storage.SetCounter(context.TODO(), "PollCount", 0)
-			} else {
-				return err
-			}
-
-		}
+	for i := 0; i < int(options.RateLimit); i++ {
+		go worker(ctx, jobs, sender, key, storage)
 	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-pollTicker.C:
+				collector.CollectMetrics()
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-pollTicker.C:
+				collector.CollectGopsutil()
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-reportTicker.C:
+				metrics := buildBatch(storage)
+				if len(metrics) > 0 {
+					jobs <- metrics
+				}
+			}
+		}
+	}()
+
+	<-ctx.Done()
 
 }
