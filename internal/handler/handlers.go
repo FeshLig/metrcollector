@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/FeshLig/metrcollector/internal/audit"
 	"github.com/FeshLig/metrcollector/internal/service"
 )
 
@@ -14,16 +15,16 @@ type Handlers struct {
 	Updates    *UpdatesHandler
 }
 
-func NewHandlers(service service.MetricsService) *Handlers {
+func NewHandlers(service service.MetricsService, audit *audit.Publisher) *Handlers {
 
 	return &Handlers{
 		Root:       NewRootHandler(service),
-		UpdateJSON: NewUpdateJSONHandler(service),
+		UpdateJSON: NewUpdateJSONHandler(service, audit),
 		ValueJSON:  NewValueJSONHandler(service),
-		UpdateURL:  NewUpdateURLHandler(service),
+		UpdateURL:  NewUpdateURLHandler(service, audit),
 		ValueURL:   NewValueURLHandler(service),
 		Ping:       NewPingHandler(service),
-		Updates:    NewUpdatesHandler(service),
+		Updates:    NewUpdatesHandler(service, audit),
 	}
 
 }

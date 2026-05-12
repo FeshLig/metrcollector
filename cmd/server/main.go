@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/FeshLig/metrcollector/internal/audit"
 	"github.com/FeshLig/metrcollector/internal/config"
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/persister"
@@ -55,8 +56,13 @@ func run() error {
 		defer persister.Stop()
 	}
 
+	auditPublisher, err := newAudit(cfg)
+	if err != nil {
+		return err
+	}
+
 	service := NewService(cfg, storage, persister)
-	handlers := handler.NewHandlers(service)
+	handlers := handler.NewHandlers(service, auditPublisher)
 	router := router.NewRouter(handlers, cfg)
 
 	if err := router.Run(cfg.Address.String()); err != nil {
@@ -65,6 +71,28 @@ func run() error {
 
 	return nil
 
+}
+
+func newAudit(cfg config.Options) (*audit.Publisher, error) {
+	publisher := audit.NewPublisher()
+	if cfg.AuditFile.String() != "" {
+		fileObserver, err := audit.NewFileObserver(string(cfg.AuditFile))
+		if err != nil {
+			return nil, err
+		}
+
+		// defer fileObserver.Close()
+
+		publisher.Subscribe(fileObserver)
+	}
+
+	if cfg.AuditURL.String() != "" {
+		httpObserver := audit.NewHTTPObserver(string(cfg.AuditURL))
+
+		publisher.Subscribe(httpObserver)
+	}
+
+	return publisher, nil
 }
 
 func newStartupContext() (context.Context, context.CancelFunc) {

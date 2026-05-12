@@ -3,7 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	"github.com/FeshLig/metrcollector/internal/audit"
 	"github.com/FeshLig/metrcollector/internal/dto"
 	"github.com/FeshLig/metrcollector/internal/service"
 	"github.com/gin-gonic/gin"
@@ -11,11 +13,13 @@ import (
 
 type UpdatesHandler struct {
 	service service.MetricsService
+	audit   *audit.Publisher
 }
 
-func NewUpdatesHandler(s service.MetricsService) *UpdatesHandler {
+func NewUpdatesHandler(s service.MetricsService, audit *audit.Publisher) *UpdatesHandler {
 	return &UpdatesHandler{
 		service: s,
+		audit:   audit,
 	}
 }
 
@@ -38,6 +42,18 @@ func (h *UpdatesHandler) Updates(c *gin.Context) {
 		c.String(errCode, msg)
 		return
 	}
+
+	metricNames := make([]string, 0, len(metrics))
+	for _, metric := range metrics {
+		metricNames = append(metricNames, metric.ID)
+	}
+	event := audit.Event{
+		Timestamp: time.Now().Unix(),
+		Metrics:   metricNames,
+		IPAddress: c.ClientIP(),
+	}
+
+	h.audit.Notify(event)
 
 	c.Status(http.StatusOK)
 

@@ -3,7 +3,9 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
+	"github.com/FeshLig/metrcollector/internal/audit"
 	"github.com/FeshLig/metrcollector/internal/dto"
 	"github.com/FeshLig/metrcollector/internal/service"
 	"github.com/gin-gonic/gin"
@@ -11,11 +13,13 @@ import (
 
 type UpdateJSONHandler struct {
 	service service.MetricsService
+	audit   *audit.Publisher
 }
 
-func NewUpdateJSONHandler(s service.MetricsService) *UpdateJSONHandler {
+func NewUpdateJSONHandler(s service.MetricsService, audit *audit.Publisher) *UpdateJSONHandler {
 	return &UpdateJSONHandler{
 		service: s,
+		audit:   audit,
 	}
 }
 
@@ -34,6 +38,16 @@ func (h *UpdateJSONHandler) UpdateFromJSON(c *gin.Context) {
 		c.String(errCode, msg)
 		return
 	}
+
+	event := audit.Event{
+		Timestamp: time.Now().Unix(),
+		Metrics: []string{
+			metric.ID,
+		},
+		IPAddress: c.ClientIP(),
+	}
+
+	h.audit.Notify(event)
 
 	c.Status(http.StatusOK)
 
