@@ -1,6 +1,6 @@
 module github.com/FeshLig/metrcollector
 
-go 1.24.13
+go 1.24.0
 
 require (
 	github.com/gin-gonic/gin v1.11.0
