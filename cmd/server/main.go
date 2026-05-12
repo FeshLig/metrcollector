@@ -60,6 +60,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	defer auditPublisher.Close()
 
 	service := NewService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, auditPublisher)
@@ -80,8 +81,6 @@ func newAudit(cfg config.Options) (*audit.Publisher, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		// defer fileObserver.Close()
 
 		publisher.Subscribe(fileObserver)
 	}
