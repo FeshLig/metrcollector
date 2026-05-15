@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 
@@ -23,7 +22,6 @@ func NewValueJSONHandler(s service.MetricsService) *ValueJSONHandler {
 func (h *ValueJSONHandler) UpdateFromJSON(c *gin.Context) {
 
 	var metric dto.Metrics
-	var buf bytes.Buffer
 
 	c.Writer.Header().Set("Content-Type", "application/json")
 
@@ -39,8 +37,6 @@ func (h *ValueJSONHandler) UpdateFromJSON(c *gin.Context) {
 		return
 	}
 
-	json.NewEncoder(&buf).Encode(result)
-
-	c.String(http.StatusOK, buf.String())
+	c.JSON(http.StatusOK, result)
 
 }

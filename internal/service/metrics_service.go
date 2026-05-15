@@ -85,8 +85,8 @@ func (s *MetricServiceImpl) Update(m dto.Metrics) error {
 
 func (s *MetricServiceImpl) Updates(m []dto.Metrics) error {
 
-	gauges := make(map[string]metric.Gauge)
-	counters := make(map[string]metric.Counter)
+	gauges := make(map[string]metric.Gauge, len(m))
+	counters := make(map[string]metric.Counter, len(m))
 
 	for _, mVal := range m {
 		name := mVal.ID
@@ -180,8 +180,9 @@ func (s *MetricServiceImpl) Get(m dto.Metrics) (dto.Metrics, error) {
 
 func (s *MetricServiceImpl) SnapshotGaugeMetrics() []dto.Metrics {
 
-	var metrics []dto.Metrics
 	gauges := s.storage.SnapshotGauges(context.TODO())
+	metrics := make([]dto.Metrics, 0, len(gauges))
+
 	for name, value := range gauges {
 		v := float64(value)
 		metrics = append(metrics, dto.Metrics{
@@ -197,8 +198,9 @@ func (s *MetricServiceImpl) SnapshotGaugeMetrics() []dto.Metrics {
 
 func (s *MetricServiceImpl) SnapshotCounterMetrics() []dto.Metrics {
 
-	var metrics []dto.Metrics
 	counters := s.storage.SnapshotCounters(context.TODO())
+	metrics := make([]dto.Metrics, 0, len(counters))
+
 	for name, value := range counters {
 		v := int64(value)
 		metrics = append(metrics, dto.Metrics{
