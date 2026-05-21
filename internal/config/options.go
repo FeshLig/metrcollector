@@ -18,6 +18,7 @@ type Options struct {
 	FileStoragePath flags.FileStoragePath
 	Restore         flags.Restore
 	DatabaseDSN     flags.DatabaseDSN
+	Key             flags.Key
 }
 
 func GetOptions() Options {
@@ -34,6 +35,8 @@ func GetOptions() Options {
 		},
 		FileStoragePath: "/tmp/" + fileName,
 		Restore:         false,
+		DatabaseDSN:     "",
+		Key:             "",
 	}
 
 	parseFlags(&options)
@@ -62,6 +65,7 @@ func parseFlags(options *Options) {
 	flag.Var(&options.FileStoragePath, "f", "file storage path")
 	flag.Var(&options.Restore, "r", "restore file (true/false)")
 	flag.Var(&options.DatabaseDSN, "d", "postgres dsn (format: postgres://user:password@host:port/dbname)")
+	flag.Var(&options.Key, "k", "hash key")
 
 	flag.Parse()
 
@@ -101,6 +105,13 @@ func parseEnv(options *Options) error {
 		err := options.DatabaseDSN.Set(databaseDSNStr)
 		if err != nil {
 			return fmt.Errorf("wrong value of DATABASE_DSN: %w", err)
+		}
+	}
+
+	if keyStr, ok := os.LookupEnv("KEY"); ok {
+		err := options.Key.Set(keyStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of KEY: %w", err)
 		}
 	}
 

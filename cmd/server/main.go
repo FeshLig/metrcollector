@@ -57,7 +57,7 @@ func run() error {
 
 	service := NewService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service)
-	router := router.NewRouter(handlers)
+	router := router.NewRouter(handlers, cfg)
 
 	if err := router.Run(cfg.Address.String()); err != nil {
 		return err

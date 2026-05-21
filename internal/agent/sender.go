@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net"
 	"net/http"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/dto"
@@ -21,7 +21,7 @@ type MetricsSender interface {
 }
 
 type Doer interface {
-	Do(func() (*http.Request, error)) (*http.Response, error)
+	Do(context.Context, func() (*http.Request, error)) (*http.Response, error)
 }
 
 type HTTPSender struct {
@@ -36,7 +36,9 @@ func NewSender(url string, client Doer) *HTTPSender {
 	}
 }
 
-func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
+func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key string) error {
+
+	var hash string
 
 	if len(metrics) == 0 {
 		return nil
@@ -45,6 +47,13 @@ func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 	body, err := json.Marshal(metrics)
 	if err != nil {
 		return fmt.Errorf("marshal metric: %w", err)
+	}
+
+	if key != "" {
+		h := sha256.New()
+		h.Write(body)
+		h.Write([]byte(key))
+		hash = hex.EncodeToString(h.Sum(nil))
 	}
 
 	var buf bytes.Buffer
@@ -59,7 +68,7 @@ func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 
 	url := fmt.Sprintf("%s/updates/", h.BaseURL)
 
-	resp, err := h.Client.Do(func() (*http.Request, error) {
+	resp, err := h.Client.Do(ctx, func() (*http.Request, error) {
 
 		req, err := http.NewRequest(
 			"POST",
@@ -72,6 +81,9 @@ func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Content-Encoding", "gzip")
+		if key != "" {
+			req.Header.Set("HashSHA256", hash)
+		}
 
 		return req, nil
 	})
@@ -92,8 +104,7 @@ func (h *HTTPSender) SendBatch(metrics []dto.Metrics) error {
 
 }
 
-func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) error {
-
+func buildBatch(storage repository.Storage) []dto.Metrics {
 	gauges := storage.SnapshotGauges(context.TODO())
 	counters := storage.SnapshotCounters(context.TODO())
 
@@ -117,88 +128,105 @@ func (h *HTTPSender) SendBatchMetrics(storage repository.Storage) error {
 		})
 	}
 
-	if err := h.SendBatch(metrics); err != nil {
-		return fmt.Errorf("batch send error: %v", err)
-	}
-
-	return nil
-
+	return metrics
 }
 
-func RunSender(storage *repository.MemStorage, options Options) error {
+func worker(
+	ctx context.Context,
+	jobs <-chan []dto.Metrics,
+	sender *HTTPSender,
+	key string,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case metrics, ok := <-jobs:
+			if !ok {
+				return
+			}
+			sender.SendBatch(ctx, metrics, key)
+		}
+	}
+}
+
+func RunSender(ctx context.Context, storage *repository.MemStorage, options Options) {
 
 	baseClient := &http.Client{}
 	retryClient := NewRetryClient(baseClient)
 
 	sender := NewSender("http://"+options.Address.String(), retryClient)
 	collector := NewMetricCollector(storage)
+	key := options.Key.String()
 
 	pollTicker := time.NewTicker(options.PollInterval.Duration)
 	reportTicker := time.NewTicker(options.ReportInterval.Duration)
 	defer pollTicker.Stop()
 	defer reportTicker.Stop()
 
-	for {
+	jobs := make(chan []dto.Metrics, options.RateLimit)
+	collectCh := make(chan struct{})
 
-		select {
+	var pollCount int64
+	var mu sync.Mutex
 
-		case <-pollTicker.C:
-			collector.CollectMetrics()
+	for i := 0; i < int(options.RateLimit); i++ {
+		go worker(ctx, jobs, sender, key)
+	}
 
-		case <-reportTicker.C:
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				close(collectCh)
+				return
+			case <-pollTicker.C:
+				collector.CollectMetrics()
 
-			if err := sender.SendBatchMetrics(storage); err == nil {
-				storage.SetCounter(context.TODO(), "PollCount", 0)
-			} else {
-				return err
+				mu.Lock()
+				pollCount++
+				mu.Unlock()
+
+				collectCh <- struct{}{}
 			}
-
 		}
-	}
+	}()
 
-}
-
-func withRetry(ctx context.Context, fn func() error) error {
-	const maxRetries = 3
-	var lastErr error
-
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-
-		err := fn()
-		if err == nil {
-			return nil
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-collectCh:
+				collector.CollectGopsutil()
+			}
 		}
+	}()
 
-		if !isRetriable(err) {
-			return err
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-reportTicker.C:
+				metrics := buildBatch(storage)
+				if len(metrics) > 0 {
+					mu.Lock()
+					currentPollCount := pollCount
+					pollCount = 0
+					mu.Unlock()
+					metrics = append(metrics, dto.Metrics{
+						ID:    "PollCount",
+						MType: "counter",
+						Delta: &currentPollCount,
+					})
+					jobs <- metrics
+				}
+			}
 		}
+	}()
 
-		lastErr = err
+	<-ctx.Done()
 
-		if attempt == maxRetries {
-			break
-		}
-
-		backoff := time.Duration(1+2*attempt) * time.Second
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(backoff):
-		}
-	}
-
-	return lastErr
-}
-
-func isRetriable(err error) bool {
-	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return true
-	}
-	if strings.Contains(err.Error(), "server error") {
-		return true
-	}
-
-	return false
 }
