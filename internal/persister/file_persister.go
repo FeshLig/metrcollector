@@ -13,6 +13,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
+// FilePersister periodically saves metrics into file storage.
 type FilePersister struct {
 	path     string
 	storage  repository.Storage
@@ -20,6 +21,7 @@ type FilePersister struct {
 	stop     chan struct{}
 }
 
+// NewFilePersister creates new file persister instance.
 func NewFilePersister(
 	path string,
 	storage repository.Storage,
@@ -33,6 +35,7 @@ func NewFilePersister(
 	}
 }
 
+// Save writes all metrics into file storage.
 func (p *FilePersister) Save() error {
 
 	var metrics []dto.Metrics
@@ -74,6 +77,7 @@ func (p *FilePersister) Save() error {
 
 }
 
+// Load restores metrics from file storage.
 func (p *FilePersister) Load() error {
 
 	var metrics []dto.Metrics
@@ -114,6 +118,7 @@ func (p *FilePersister) Load() error {
 
 }
 
+// Start launches periodic metric persistence.
 func (p *FilePersister) Start() {
 	if p.interval <= 0 {
 		return
@@ -134,10 +139,12 @@ func (p *FilePersister) Start() {
 	}()
 }
 
+// Stop stops periodic metric persistence.
 func (p *FilePersister) Stop() {
 	close(p.stop)
 }
 
+// SaveNow immediately saves metrics into file storage.
 func (p *FilePersister) SaveNow() {
 	_ = p.Save()
 }

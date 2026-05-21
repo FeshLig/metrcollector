@@ -12,6 +12,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/FeshLig/metrcollector/internal/router"
 	"github.com/FeshLig/metrcollector/internal/service"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -30,12 +31,18 @@ func run() error {
 
 	cfg := config.GetOptions()
 
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return err
+	}
+	defer logger.Sync()
+
 	ctx, cancel := newStartupContext()
 	defer cancel()
 
 	if cfg.DatabaseDSN.String() != "" {
 
-		s, db, err := newDB(ctx, cfg)
+		postgres_storage, db, err := newDB(ctx, cfg)
 		if err != nil {
 			return err
 		}
@@ -44,7 +51,7 @@ func run() error {
 		}
 
 		persister = nil
-		storage = s
+		storage = postgres_storage
 
 	} else {
 
@@ -62,9 +69,9 @@ func run() error {
 	}
 	defer auditPublisher.Close()
 
-	service := NewService(cfg, storage, persister)
+	service := newService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, auditPublisher)
-	router := router.NewRouter(handlers, cfg)
+	router := router.NewRouter(handlers, cfg, logger)
 
 	if err := router.Run(cfg.Address.String()); err != nil {
 		return err
@@ -141,7 +148,7 @@ func newPersister(cfg config.Options, storage repository.Storage) (*persister.Fi
 
 }
 
-func NewService(cfg config.Options, storage repository.Storage, persister *persister.FilePersister) service.MetricsService {
+func newService(cfg config.Options, storage repository.Storage, persister *persister.FilePersister) service.MetricsService {
 
 	service := service.NewMetricService(
 		storage,

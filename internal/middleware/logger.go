@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Logger logs HTTP request and response information.
 func Logger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 

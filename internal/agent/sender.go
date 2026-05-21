@@ -16,19 +16,23 @@ import (
 	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
+// MetricsSender describes metric batch sender.
 type MetricsSender interface {
-	SendBatch(metrics []dto.Metrics) error
+	SendBatch(ctx context.Context, metrics []dto.Metrics, key string) error
 }
 
+// Doer describes HTTP client with retry support.
 type Doer interface {
 	Do(context.Context, func() (*http.Request, error)) (*http.Response, error)
 }
 
+// HTTPSender sends metrics to remote HTTP server.
 type HTTPSender struct {
 	BaseURL string
 	Client  Doer
 }
 
+// NewSender creates new HTTP metrics sender.
 func NewSender(url string, client Doer) *HTTPSender {
 	return &HTTPSender{
 		BaseURL: url,
@@ -36,6 +40,7 @@ func NewSender(url string, client Doer) *HTTPSender {
 	}
 }
 
+// SendBatch sends metric batch to server.
 func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key string) error {
 
 	var hash string
@@ -151,9 +156,12 @@ func worker(
 	}
 }
 
+// RunSender starts metric collection and sending loops.
 func RunSender(ctx context.Context, storage *repository.MemStorage, options Options) {
 
-	baseClient := &http.Client{}
+	baseClient := &http.Client{
+		Timeout: 5 * time.Second,
+	}
 	retryClient := NewRetryClient(baseClient)
 
 	sender := NewSender("http://"+options.Address.String(), retryClient)

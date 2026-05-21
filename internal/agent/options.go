@@ -9,6 +9,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/flags"
 )
 
+// Options contains agent configuration parameters.
 type Options struct {
 	Address        flags.NetAddress
 	ReportInterval flags.SecondsDuration
@@ -17,6 +18,7 @@ type Options struct {
 	RateLimit      flags.RateLimit
 }
 
+// GetOptions parses agent configuration from flags and environment variables.
 func GetOptions() Options {
 
 	const defaultReportInterval = time.Duration(10) * time.Second
@@ -50,7 +52,7 @@ func parseFlags(options *Options) {
 	flag.Var(&options.ReportInterval, "r", "frequency of sending metrics")
 	flag.Var(&options.PollInterval, "p", "metrics polling frequency")
 	flag.Var(&options.Key, "k", "hash key")
-	flag.Var(&options.Key, "l", "rate limit")
+	flag.Var(&options.RateLimit, "l", "rate limit")
 
 	flag.Parse()
 

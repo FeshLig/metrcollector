@@ -7,11 +7,13 @@ import (
 	"net/http"
 )
 
+// HTTPObserver sends audit events over HTTP.
 type HTTPObserver struct {
 	url    string
 	client *http.Client
 }
 
+// NewHTTPObserver creates new HTTP audit observer.
 func NewHTTPObserver(url string) *HTTPObserver {
 	return &HTTPObserver{
 		url:    url,
@@ -19,6 +21,7 @@ func NewHTTPObserver(url string) *HTTPObserver {
 	}
 }
 
+// Process sends audit event to remote HTTP endpoint.
 func (h *HTTPObserver) Process(event Event) error {
 	data, err := json.Marshal(event)
 	if err != nil {

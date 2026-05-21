@@ -11,11 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UpdateJSONHandler handles metric updates from JSON requests.
 type UpdateJSONHandler struct {
 	service service.MetricsService
 	audit   *audit.Publisher
 }
 
+// NewUpdateJSONHandler creates a new UpdateJSONHandler instance.
 func NewUpdateJSONHandler(s service.MetricsService, audit *audit.Publisher) *UpdateJSONHandler {
 	return &UpdateJSONHandler{
 		service: s,
@@ -23,6 +25,7 @@ func NewUpdateJSONHandler(s service.MetricsService, audit *audit.Publisher) *Upd
 	}
 }
 
+// UpdateFromJSON updates metric value from JSON request body.
 func (h *UpdateJSONHandler) UpdateFromJSON(c *gin.Context) {
 
 	var metric dto.Metrics

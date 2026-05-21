@@ -9,16 +9,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ValueJSONHandler handles metric value requests in JSON format.
 type ValueJSONHandler struct {
 	service service.MetricsService
 }
 
+// NewValueJSONHandler creates a new ValueJSONHandler instance.
 func NewValueJSONHandler(s service.MetricsService) *ValueJSONHandler {
 	return &ValueJSONHandler{
 		service: s,
 	}
 }
 
+// UpdateFromJSON returns metric value in JSON format.
 func (h *ValueJSONHandler) UpdateFromJSON(c *gin.Context) {
 
 	var metric dto.Metrics

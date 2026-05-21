@@ -5,6 +5,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/service"
 )
 
+// Handlers contains all HTTP handlers of the application.
 type Handlers struct {
 	Root       *RootHandler
 	UpdateJSON *UpdateJSONHandler
@@ -15,6 +16,7 @@ type Handlers struct {
 	Updates    *UpdatesHandler
 }
 
+// NewHandlers creates and initializes all application handlers.
 func NewHandlers(service service.MetricsService, audit *audit.Publisher) *Handlers {
 
 	return &Handlers{

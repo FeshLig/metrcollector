@@ -11,11 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UpdateURLHandler handles metric updates from URL parameters.
 type UpdateURLHandler struct {
 	service service.MetricsService
 	audit   *audit.Publisher
 }
 
+// NewUpdateURLHandler creates a new UpdateURLHandler instance.
 func NewUpdateURLHandler(s service.MetricsService, audit *audit.Publisher) *UpdateURLHandler {
 	return &UpdateURLHandler{
 		service: s,
@@ -23,6 +25,7 @@ func NewUpdateURLHandler(s service.MetricsService, audit *audit.Publisher) *Upda
 	}
 }
 
+// UpdateFromURL updates metric value from URL parameters.
 func (h *UpdateURLHandler) UpdateFromURL(c *gin.Context) {
 
 	metricType := c.Param("type")

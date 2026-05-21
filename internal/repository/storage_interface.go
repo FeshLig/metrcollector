@@ -6,6 +6,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/metric"
 )
 
+// Storage provides metric persistence operations.
 type Storage interface {
 	SetGauge(ctx context.Context, name string, value metric.Gauge) error
 	AddCounter(ctx context.Context, name string, delta metric.Counter) error

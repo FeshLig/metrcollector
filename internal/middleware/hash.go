@@ -10,16 +10,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// bodyWriter captures HTTP response body.
 type bodyWriter struct {
 	gin.ResponseWriter
 	body *bytes.Buffer
 }
 
+// Write writes response body and stores its copy.
 func (w *bodyWriter) Write(b []byte) (int, error) {
 	w.body.Write(b)
 	return w.ResponseWriter.Write(b)
 }
 
+// Hash validates request hash and signs HTTP responses.
 func Hash(key string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 

@@ -6,14 +6,17 @@ import (
 	"time"
 )
 
+// SecondsDuration represents duration value parsed from flags.
 type SecondsDuration struct {
 	time.Duration
 }
 
+// String returns duration string representation.
 func (d SecondsDuration) String() string {
 	return d.Duration.String()
 }
 
+// Set parses duration value from string.
 func (d *SecondsDuration) Set(s string) error {
 	if dur, err := time.ParseDuration(s); err == nil {
 		d.Duration = dur

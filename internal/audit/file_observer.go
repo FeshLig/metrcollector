@@ -5,10 +5,12 @@ import (
 	"os"
 )
 
+// FileObserver writes audit events into file.
 type FileObserver struct {
 	file *os.File
 }
 
+// NewFileObserver creates new file audit observer.
 func NewFileObserver(path string) (*FileObserver, error) {
 	file, err := os.OpenFile(
 		path,
@@ -24,6 +26,7 @@ func NewFileObserver(path string) (*FileObserver, error) {
 	}, nil
 }
 
+// Process writes audit event into file.
 func (f *FileObserver) Process(event Event) error {
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -36,6 +39,7 @@ func (f *FileObserver) Process(event Event) error {
 	return err
 }
 
+// Close closes audit log file.
 func (f *FileObserver) Close() error {
 	return f.file.Close()
 }

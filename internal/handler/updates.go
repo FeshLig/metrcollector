@@ -11,11 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UpdatesHandler handles batch metric updates.
 type UpdatesHandler struct {
 	service service.MetricsService
 	audit   *audit.Publisher
 }
 
+// NewUpdatesHandler creates a new UpdatesHandler instance.
 func NewUpdatesHandler(s service.MetricsService, audit *audit.Publisher) *UpdatesHandler {
 	return &UpdatesHandler{
 		service: s,
@@ -23,6 +25,7 @@ func NewUpdatesHandler(s service.MetricsService, audit *audit.Publisher) *Update
 	}
 }
 
+// Updates updates multiple metrics from JSON request body.
 func (h *UpdatesHandler) Updates(c *gin.Context) {
 
 	var metrics []dto.Metrics

@@ -7,12 +7,14 @@ import (
 	"github.com/FeshLig/metrcollector/internal/metric"
 )
 
+// MemStorage stores metrics in memory.
 type MemStorage struct {
 	mu       sync.Mutex
 	gauges   map[string]metric.Gauge
 	counters map[string]metric.Counter
 }
 
+// NewMemStorage creates new in-memory storage instance.
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		gauges:   make(map[string]metric.Gauge),
@@ -20,6 +22,7 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
+// SetGauge stores gauge metric value.
 func (m *MemStorage) SetGauge(ctx context.Context, name string, value metric.Gauge) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -27,6 +30,7 @@ func (m *MemStorage) SetGauge(ctx context.Context, name string, value metric.Gau
 	return nil
 }
 
+// GetGauge returns gauge metric value by name.
 func (m *MemStorage) GetGauge(ctx context.Context, name string) (metric.Gauge, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -36,6 +40,7 @@ func (m *MemStorage) GetGauge(ctx context.Context, name string) (metric.Gauge, b
 	return gauge, ok
 }
 
+// AddCounter increments counter metric value.
 func (m *MemStorage) AddCounter(ctx context.Context, name string, delta metric.Counter) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -43,6 +48,7 @@ func (m *MemStorage) AddCounter(ctx context.Context, name string, delta metric.C
 	return nil
 }
 
+// SetCounter sets counter metric value.
 func (m *MemStorage) SetCounter(ctx context.Context, name string, value metric.Counter) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -50,6 +56,7 @@ func (m *MemStorage) SetCounter(ctx context.Context, name string, value metric.C
 	return nil
 }
 
+// GetCounter returns counter metric value by name.
 func (m *MemStorage) GetCounter(ctx context.Context, name string) (metric.Counter, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -59,6 +66,7 @@ func (m *MemStorage) GetCounter(ctx context.Context, name string) (metric.Counte
 	return counter, ok
 }
 
+// SetMetrics stores multiple metrics.
 func (m *MemStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) error {
 	for name, value := range gauges {
 		m.SetGauge(ctx, name, value)
@@ -71,6 +79,7 @@ func (m *MemStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Ga
 	return nil
 }
 
+// SnapshotGauges returns copy of all gauge metrics.
 func (m *MemStorage) SnapshotGauges(ctx context.Context) map[string]metric.Gauge {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -81,6 +90,7 @@ func (m *MemStorage) SnapshotGauges(ctx context.Context) map[string]metric.Gauge
 	return copy
 }
 
+// SnapshotCounters returns copy of all counter metrics.
 func (m *MemStorage) SnapshotCounters(ctx context.Context) map[string]metric.Counter {
 
 	m.mu.Lock()
@@ -92,6 +102,7 @@ func (m *MemStorage) SnapshotCounters(ctx context.Context) map[string]metric.Cou
 	return copy
 }
 
+// SnapshotMetrics returns copies of all stored metrics.
 func (m *MemStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Gauge, map[string]metric.Counter) {
 	gauges := m.SnapshotGauges(ctx)
 	counters := m.SnapshotCounters(ctx)
@@ -99,6 +110,7 @@ func (m *MemStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Gau
 	return gauges, counters
 }
 
+// Check verifies storage availability.
 func (m *MemStorage) Check(ctx context.Context) error {
 	return nil
 }

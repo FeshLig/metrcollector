@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// compressWriter compresses HTTP response body using gzip.
 type compressWriter struct {
 	gin.ResponseWriter
 	zw        *gzip.Writer
@@ -16,6 +17,7 @@ type compressWriter struct {
 	useGzip   bool
 }
 
+// newCompressWriter creates gzip response writer.
 func newCompressWriter(w gin.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		ResponseWriter: w,
@@ -23,6 +25,7 @@ func newCompressWriter(w gin.ResponseWriter) *compressWriter {
 	}
 }
 
+// Write writes compressed response body.
 func (c *compressWriter) Write(p []byte) (int, error) {
 	if !c.modeKnown {
 		ct := c.Header().Get("Content-Type")
@@ -44,6 +47,7 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 
 }
 
+// Close closes gzip writer.
 func (c *compressWriter) Close() error {
 	if c.useGzip {
 		return c.zw.Close()
@@ -51,11 +55,13 @@ func (c *compressWriter) Close() error {
 	return nil
 }
 
+// compressReader decompresses gzip request body.
 type compressReader struct {
 	io.ReadCloser
 	zr *gzip.Reader
 }
 
+// newCompressReader creates gzip request reader.
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -68,10 +74,12 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Read reads decompressed request body.
 func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
+// Close closes gzip reader.
 func (c *compressReader) Close() error {
 	if err := c.zr.Close(); err != nil {
 		return err
@@ -79,6 +87,7 @@ func (c *compressReader) Close() error {
 	return c.ReadCloser.Close()
 }
 
+// Gzip compresses HTTP responses and decompresses gzip requests.
 func Gzip() gin.HandlerFunc {
 
 	return func(c *gin.Context) {

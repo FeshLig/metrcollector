@@ -12,6 +12,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/flags"
 )
 
+// Options contains application configuration values.
 type Options struct {
 	Address         flags.NetAddress
 	StoreInterval   flags.SecondsStoreInterval
@@ -23,6 +24,7 @@ type Options struct {
 	AuditURL        flags.AuditURL
 }
 
+// GetOptions parses application configuration from flags and environment variables.
 func GetOptions() Options {
 
 	const fileName = "metrics.txt"
@@ -62,6 +64,7 @@ func GetOptions() Options {
 
 }
 
+// parseFlags parses command-line flags.
 func parseFlags(options *Options) {
 
 	flag.Var(&options.Address, "a", "net address host:port")
@@ -77,6 +80,7 @@ func parseFlags(options *Options) {
 
 }
 
+// parseEnv parses environment variables.
 func parseEnv(options *Options) error {
 
 	if addrStr, ok := os.LookupEnv("ADDRESS"); ok {

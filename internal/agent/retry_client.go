@@ -10,14 +10,17 @@ import (
 	"time"
 )
 
+// RetryClient wraps http.Client with retry logic.
 type RetryClient struct {
 	client *http.Client
 }
 
+// NewRetryClient creates new retry client instance.
 func NewRetryClient(client *http.Client) *RetryClient {
 	return &RetryClient{client: client}
 }
 
+// Do executes HTTP request with retry support.
 func (r *RetryClient) Do(ctx context.Context, newReq func() (*http.Request, error)) (*http.Response, error) {
 	var resp *http.Response
 
