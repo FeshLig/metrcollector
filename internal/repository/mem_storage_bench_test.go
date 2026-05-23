@@ -13,9 +13,9 @@ func BenchmarkMemStorage_SetGauge(b *testing.B) {
 	ctx := context.Background()
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	i := 0
+	for b.Loop() {
 		name := strconv.Itoa(i)
 
 		err := storage.SetGauge(
@@ -26,6 +26,7 @@ func BenchmarkMemStorage_SetGauge(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+		i++
 	}
 }
 
@@ -34,9 +35,9 @@ func BenchmarkMemStorage_AddCounter(b *testing.B) {
 	ctx := context.Background()
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	i := 0
+	for b.Loop() {
 		name := strconv.Itoa(i)
 
 		err := storage.AddCounter(
@@ -47,6 +48,7 @@ func BenchmarkMemStorage_AddCounter(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+		i++
 	}
 }
 
@@ -64,9 +66,8 @@ func BenchmarkMemStorage_GetGauge(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, ok := storage.GetGauge(ctx, "test")
 		if !ok {
 			b.Fatal("gauge not found")
@@ -88,9 +89,8 @@ func BenchmarkMemStorage_GetCounter(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, ok := storage.GetCounter(ctx, "test")
 		if !ok {
 			b.Fatal("counter not found")
@@ -113,9 +113,8 @@ func BenchmarkMemStorage_SetMetrics(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		err := storage.SetMetrics(
 			ctx,
 			gauges,
@@ -132,7 +131,6 @@ func BenchmarkMemStorage_ParallelAddCounter(b *testing.B) {
 	ctx := context.Background()
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {

@@ -26,9 +26,8 @@ func BenchmarkMetricService_UpdateGauge(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := service.Update(metric); err != nil {
 			b.Fatal(err)
 		}
@@ -53,9 +52,8 @@ func BenchmarkMetricService_UpdateCounter(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := service.Update(metric); err != nil {
 			b.Fatal(err)
 		}
@@ -96,9 +94,8 @@ func BenchmarkMetricService_Updates(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := service.Updates(metrics); err != nil {
 			b.Fatal(err)
 		}
@@ -131,9 +128,8 @@ func BenchmarkMetricService_GetGauge(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := service.Get(request)
 		if err != nil {
 			b.Fatal(err)
@@ -167,9 +163,8 @@ func BenchmarkMetricService_GetCounter(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := service.Get(request)
 		if err != nil {
 			b.Fatal(err)
@@ -200,9 +195,8 @@ func BenchmarkMetricService_SnapshotGaugeMetrics(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = service.SnapshotGaugeMetrics()
 	}
 }

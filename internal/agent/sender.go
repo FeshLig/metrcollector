@@ -190,7 +190,7 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 				close(collectCh)
 				return
 			case <-pollTicker.C:
-				collector.CollectMetrics()
+				collector.CollectMetrics(ctx)
 
 				mu.Lock()
 				pollCount++
@@ -207,7 +207,7 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 			case <-ctx.Done():
 				return
 			case <-collectCh:
-				collector.CollectGopsutil()
+				collector.CollectGopsutil(ctx)
 			}
 		}
 	}()

@@ -13,59 +13,42 @@ import (
 
 func BenchmarkRootHandler_RootPage(b *testing.B) {
 	gin.SetMode(gin.ReleaseMode)
-
 	storage := repository.NewMemStorage()
+	svc := service.NewMetricService(storage, nil, false)
 
-	svc := service.NewMetricService(
-		storage,
-		nil,
-		false,
-	)
-
-	for i := 0; i < 1000; i++ {
+	// Setup: populate storage with gauge and counter metrics
+	for i := range 1000 {
 		value := float64(i)
-
-		err := svc.Update(dto.Metrics{
+		if err := svc.Update(dto.Metrics{
 			ID:    strconv.Itoa(i),
 			MType: dto.Gauge,
 			Value: &value,
-		})
-		if err != nil {
+		}); err != nil {
 			b.Fatal(err)
 		}
 	}
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		delta := int64(i)
-
-		err := svc.Update(dto.Metrics{
+		if err := svc.Update(dto.Metrics{
 			ID:    "counter_" + strconv.Itoa(i),
 			MType: dto.Counter,
 			Delta: &delta,
-		})
-		if err != nil {
+		}); err != nil {
 			b.Fatal(err)
 		}
 	}
 
 	handler := NewRootHandler(svc)
-
 	router := gin.New()
-
 	router.LoadHTMLGlob("../templates/*")
-
 	router.GET("/", handler.RootPage)
 
-	req := httptest.NewRequest(
-		"GET",
-		"/",
-		nil,
-	)
+	req := httptest.NewRequest("GET", "/", nil)
 
+	// Benchmark: measure RootPage rendering with a populated storage
 	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 	}

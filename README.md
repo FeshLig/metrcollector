@@ -47,6 +47,44 @@ git fetch template && git checkout template/v2 .github
 
 ## Profiles diff:
 
+Основные изменения - выделение памяти с помощью len(). Примеры:
+
+Файл internal/handler/root.go
+== == == == == == == == == == == == == == == == == == == == == == ==
+Было:
+  gauges := make(map[string]metric.Gauge)
+	counters := make(map[string]metric.Counter)
+Стало:
+  gauges := make(map[string]metric.Gauge, len(gaugesMetr))
+	counters := make(map[string]metric.Counter, len(countersMetr))
+== == == == == == == == == == == == == == == == == == == == == == ==
+
+Файл internal/service/metrics_service.go
+== == == == == == == == == == == == == == == == == == == == == == ==
+Было:
+  gauges := make(map[string]metric.Gauge)
+	counters := make(map[string]metric.Counter)
+  var metrics []dto.Metrics
+  var metrics []dto.Metrics
+Стало:
+  gauges := make(map[string]metric.Gauge, len(m))
+	counters := make(map[string]metric.Counter, len(m))
+  metrics := make([]dto.Metrics, 0, len(gauges))
+  metrics := make([]dto.Metrics, 0, len(counters))
+== == == == == == == == == == == == == == == == == == == == == == ==
+
+Также убрал лишний буфер:
+Файл internal/handler/value_json.go
+== == == == == == == == == == == == == == == == == == == == == == ==
+Было:
+  var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(result)
+	c.String(http.StatusOK, buf.String())
+Стало:
+  c.JSON(http.StatusOK, result)
+== == == == == == == == == == == == == == == == == == == == == == ==
+
+
 $ go tool pprof -top -diff_base=profiles/base.pprof profiles/result2.pprof
 File: handler.test
 Build ID: d813951dfeb6409dc10cb49ff3682f8c973b88f5

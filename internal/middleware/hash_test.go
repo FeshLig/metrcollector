@@ -14,7 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeHash(body []byte, key string) string {
+func makeHash(t *testing.T, body []byte, key string) string {
+	t.Helper()
 	h := sha256.New()
 	h.Write(body)
 	h.Write([]byte(key))
@@ -39,7 +40,7 @@ func TestHash_ValidRequest(t *testing.T) {
 
 	body := []byte("hello")
 
-	hash := makeHash(body, key)
+	hash := makeHash(t, body, key)
 
 	req := httptest.NewRequest(
 		http.MethodPost,
@@ -96,7 +97,7 @@ func TestHash_ResponseHash(t *testing.T) {
 
 	body := []byte("request")
 
-	reqHash := makeHash(body, key)
+	reqHash := makeHash(t, body, key)
 
 	req := httptest.NewRequest(
 		http.MethodPost,
@@ -110,7 +111,7 @@ func TestHash_ResponseHash(t *testing.T) {
 
 	r.ServeHTTP(w, req)
 
-	expectedRespHash := makeHash([]byte("response"), key)
+	expectedRespHash := makeHash(t, []byte("response"), key)
 
 	require.Equal(
 		t,

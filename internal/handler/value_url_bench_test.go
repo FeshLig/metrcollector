@@ -44,9 +44,8 @@ func BenchmarkValueURLHandler_Gauge(b *testing.B) {
 	)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 	}
@@ -86,9 +85,8 @@ func BenchmarkValueURLHandler_Counter(b *testing.B) {
 	)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, req)
 	}

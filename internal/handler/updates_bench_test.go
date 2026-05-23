@@ -56,9 +56,9 @@ func BenchmarkUpdatesHandler_Updates(b *testing.B) {
 	]`)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
+		b.StopTimer()
 		req := httptest.NewRequest(
 			"POST",
 			"/updates/",
@@ -69,6 +69,7 @@ func BenchmarkUpdatesHandler_Updates(b *testing.B) {
 			"Content-Type",
 			"application/json",
 		)
+		b.StartTimer()
 
 		w := httptest.NewRecorder()
 

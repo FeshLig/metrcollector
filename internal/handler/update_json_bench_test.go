@@ -43,9 +43,9 @@ func BenchmarkUpdateJSONHandler_Gauge(b *testing.B) {
 	}`)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
+		b.StopTimer()
 		req := httptest.NewRequest(
 			"POST",
 			"/update/",
@@ -56,6 +56,7 @@ func BenchmarkUpdateJSONHandler_Gauge(b *testing.B) {
 			"Content-Type",
 			"application/json",
 		)
+		b.StartTimer()
 
 		w := httptest.NewRecorder()
 
@@ -95,9 +96,9 @@ func BenchmarkUpdateJSONHandler_Counter(b *testing.B) {
 	}`)
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
+		b.StopTimer()
 		req := httptest.NewRequest(
 			"POST",
 			"/update/",
@@ -108,6 +109,7 @@ func BenchmarkUpdateJSONHandler_Counter(b *testing.B) {
 			"Content-Type",
 			"application/json",
 		)
+		b.StartTimer()
 
 		w := httptest.NewRecorder()
 

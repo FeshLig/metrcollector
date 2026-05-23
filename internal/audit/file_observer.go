@@ -3,11 +3,13 @@ package audit
 import (
 	"encoding/json"
 	"os"
+	"sync"
 )
 
 // FileObserver writes audit events into file.
 type FileObserver struct {
 	file *os.File
+	mu   sync.Mutex
 }
 
 // NewFileObserver creates new file audit observer.
@@ -34,6 +36,9 @@ func (f *FileObserver) Process(event Event) error {
 	}
 
 	data = append(data, '\n')
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
 	_, err = f.file.Write(data)
 	return err
