@@ -45,7 +45,7 @@ func TestFilePersister_Save_CreatesFile(t *testing.T) {
 func TestFilePersister_Save_WritesGauge(t *testing.T) {
 	path := tmpPath(t)
 	storage := repository.NewMemStorage()
-	storage.SetGauge(ctx(), "temperature", metric.Gauge(36.6))
+	storage.SetGauge(ctx(t), "temperature", metric.Gauge(36.6))
 
 	p := newTestPersisterWithStorage(t, path, storage)
 	require.NoError(t, p.Save())
@@ -66,7 +66,7 @@ func TestFilePersister_Save_WritesGauge(t *testing.T) {
 func TestFilePersister_Save_WritesCounter(t *testing.T) {
 	path := tmpPath(t)
 	storage := repository.NewMemStorage()
-	storage.SetCounter(ctx(), "requests", metric.Counter(42))
+	storage.SetCounter(ctx(t), "requests", metric.Counter(42))
 
 	p := newTestPersisterWithStorage(t, path, storage)
 	require.NoError(t, p.Save())
@@ -121,7 +121,7 @@ func TestFilePersister_Save_IsAtomic(t *testing.T) {
 func TestFilePersister_Load_RestoresGauge(t *testing.T) {
 	path := tmpPath(t)
 	storage := repository.NewMemStorage()
-	storage.SetGauge(ctx(), "cpu", metric.Gauge(0.75))
+	storage.SetGauge(ctx(t), "cpu", metric.Gauge(0.75))
 
 	p1 := newTestPersisterWithStorage(t, path, storage)
 	require.NoError(t, p1.Save())
@@ -130,7 +130,7 @@ func TestFilePersister_Load_RestoresGauge(t *testing.T) {
 	p2 := newTestPersisterWithStorage(t, path, storage2)
 	require.NoError(t, p2.Load())
 
-	gauges, _ := storage2.SnapshotMetrics(ctx())
+	gauges, _ := storage2.SnapshotMetrics(ctx(t))
 	val, ok := gauges["cpu"]
 	require.True(t, ok)
 	assert.InDelta(t, 0.75, float64(val), 1e-9)
@@ -139,7 +139,7 @@ func TestFilePersister_Load_RestoresGauge(t *testing.T) {
 func TestFilePersister_Load_RestoresCounter(t *testing.T) {
 	path := tmpPath(t)
 	storage := repository.NewMemStorage()
-	storage.SetCounter(ctx(), "hits", metric.Counter(100))
+	storage.SetCounter(ctx(t), "hits", metric.Counter(100))
 
 	p1 := newTestPersisterWithStorage(t, path, storage)
 	require.NoError(t, p1.Save())
@@ -148,7 +148,7 @@ func TestFilePersister_Load_RestoresCounter(t *testing.T) {
 	p2 := newTestPersisterWithStorage(t, path, storage2)
 	require.NoError(t, p2.Load())
 
-	_, counters := storage2.SnapshotMetrics(ctx())
+	_, counters := storage2.SnapshotMetrics(ctx(t))
 	val, ok := counters["hits"]
 	require.True(t, ok)
 	assert.Equal(t, metric.Counter(100), val)
@@ -213,8 +213,8 @@ func TestFilePersister_Load_UnknownMetricType(t *testing.T) {
 func TestFilePersister_RoundTrip(t *testing.T) {
 	path := tmpPath(t)
 	storage := repository.NewMemStorage()
-	storage.SetGauge(ctx(), "mem", metric.Gauge(1024.5))
-	storage.SetCounter(ctx(), "reqs", metric.Counter(7))
+	storage.SetGauge(ctx(t), "mem", metric.Gauge(1024.5))
+	storage.SetCounter(ctx(t), "reqs", metric.Counter(7))
 
 	p1 := newTestPersisterWithStorage(t, path, storage)
 	require.NoError(t, p1.Save())
@@ -223,7 +223,7 @@ func TestFilePersister_RoundTrip(t *testing.T) {
 	p2 := newTestPersisterWithStorage(t, path, storage2)
 	require.NoError(t, p2.Load())
 
-	gauges, counters := storage2.SnapshotMetrics(ctx())
+	gauges, counters := storage2.SnapshotMetrics(ctx(t))
 
 	g, ok := gauges["mem"]
 	require.True(t, ok)
@@ -237,7 +237,7 @@ func TestFilePersister_RoundTrip(t *testing.T) {
 func TestFilePersister_Start_WritesOnTick(t *testing.T) {
 	path := tmpPath(t)
 	storage := repository.NewMemStorage()
-	storage.SetCounter(ctx(), "tick_test", metric.Counter(1))
+	storage.SetCounter(ctx(t), "tick_test", metric.Counter(1))
 
 	p := persister.NewFilePersister(path, storage, 50*time.Millisecond)
 	p.Start()
@@ -260,7 +260,7 @@ func TestFilePersister_Start_ZeroInterval_DoesNotPanic(t *testing.T) {
 func TestFilePersister_SaveNow(t *testing.T) {
 	path := tmpPath(t)
 	storage := repository.NewMemStorage()
-	storage.SetGauge(ctx(), "instant", metric.Gauge(9.9))
+	storage.SetGauge(ctx(t), "instant", metric.Gauge(9.9))
 
 	p := newTestPersisterWithStorage(t, path, storage)
 	p.SaveNow()
@@ -269,6 +269,7 @@ func TestFilePersister_SaveNow(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func ctx() context.Context {
+func ctx(t *testing.T) context.Context {
+	t.Helper()
 	return context.Background()
 }

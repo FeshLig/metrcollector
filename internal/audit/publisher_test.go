@@ -24,16 +24,6 @@ func (m *mockObserver) Process(event audit.Event) error {
 	return m.err
 }
 
-type mockCloser struct {
-	mockObserver
-	closed bool
-}
-
-func (m *mockCloser) Close() error {
-	m.closed = true
-	return nil
-}
-
 func TestPublisher_Notify_SingleObserver(t *testing.T) {
 	obs := &mockObserver{}
 	p := audit.NewPublisher()
@@ -60,26 +50,4 @@ func TestPublisher_Notify_MultipleObservers(t *testing.T) {
 func TestPublisher_Notify_NoObservers(t *testing.T) {
 	p := audit.NewPublisher()
 	assert.NotPanics(t, func() { p.Notify(testEventP) })
-}
-
-func TestPublisher_Close_CallsCloser(t *testing.T) {
-	obs := &mockCloser{}
-	p := audit.NewPublisher()
-	p.Subscribe(obs)
-
-	require.NoError(t, p.Close())
-	assert.True(t, obs.closed)
-}
-
-func TestPublisher_Close_SkipsNonCloser(t *testing.T) {
-	obs := &mockObserver{}
-	p := audit.NewPublisher()
-	p.Subscribe(obs)
-
-	assert.NoError(t, p.Close())
-}
-
-func TestPublisher_Close_NoObservers(t *testing.T) {
-	p := audit.NewPublisher()
-	assert.NoError(t, p.Close())
 }

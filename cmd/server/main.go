@@ -63,11 +63,11 @@ func run() error {
 		defer persister.Stop()
 	}
 
-	auditPublisher, err := newAudit(cfg)
+	auditPublisher, closeAudit, err := newAudit(cfg)
 	if err != nil {
 		return err
 	}
-	defer auditPublisher.Close()
+	defer closeAudit()
 
 	service := newService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, auditPublisher)
@@ -81,13 +81,18 @@ func run() error {
 
 }
 
-func newAudit(cfg config.Options) (*audit.Publisher, error) {
+func newAudit(cfg config.Options) (*audit.Publisher, func() error, error) {
 	publisher := audit.NewPublisher()
+
+	var closers []func() error
+
 	if cfg.AuditFile.String() != "" {
 		fileObserver, err := audit.NewFileObserver(string(cfg.AuditFile))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+
+		closers = append(closers, fileObserver.Close)
 
 		publisher.Subscribe(fileObserver)
 	}
@@ -98,7 +103,17 @@ func newAudit(cfg config.Options) (*audit.Publisher, error) {
 		publisher.Subscribe(httpObserver)
 	}
 
-	return publisher, nil
+	closeFn := func() error {
+		for _, closer := range closers {
+			if err := closer(); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	return publisher, closeFn, nil
 }
 
 func newStartupContext() (context.Context, context.CancelFunc) {
