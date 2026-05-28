@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 
@@ -10,20 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ValueJSONHandler handles metric value requests in JSON format.
 type ValueJSONHandler struct {
 	service service.MetricsService
 }
 
+// NewValueJSONHandler creates a new ValueJSONHandler instance.
 func NewValueJSONHandler(s service.MetricsService) *ValueJSONHandler {
 	return &ValueJSONHandler{
 		service: s,
 	}
 }
 
+// UpdateFromJSON returns metric value in JSON format.
 func (h *ValueJSONHandler) UpdateFromJSON(c *gin.Context) {
 
 	var metric dto.Metrics
-	var buf bytes.Buffer
 
 	c.Writer.Header().Set("Content-Type", "application/json")
 
@@ -39,8 +40,6 @@ func (h *ValueJSONHandler) UpdateFromJSON(c *gin.Context) {
 		return
 	}
 
-	json.NewEncoder(&buf).Encode(result)
-
-	c.String(http.StatusOK, buf.String())
+	c.JSON(http.StatusOK, result)
 
 }

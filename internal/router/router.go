@@ -8,19 +8,17 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewRouter(handlers *handler.Handlers, cfg config.Options) *gin.Engine {
-
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic("cannot initialize zap")
-	}
-
-	defer logger.Sync()
+// NewRouter creates and configures HTTP router.
+func NewRouter(handlers *handler.Handlers, cfg config.Options, logger *zap.Logger) *gin.Engine {
 
 	r := gin.New()
 	r.Use(middleware.Logger(logger), middleware.Gzip(), middleware.Hash(cfg.Key.String()), gin.Recovery())
 
-	r.LoadHTMLGlob("./internal/templates/*")
+	if gin.Mode() != gin.TestMode {
+		r.LoadHTMLGlob("./internal/templates/*")
+	} else {
+		r.LoadHTMLGlob("../../internal/templates/*")
+	}
 
 	r.GET("/", handlers.Root.RootPage)
 	r.POST("/update/", handlers.UpdateJSON.UpdateFromJSON)

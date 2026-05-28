@@ -8,16 +8,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// PingHandler handles database ping requests.
 type PingHandler struct {
 	service service.MetricsService
 }
 
+// NewPingHandler creates a new PingHandler instance.
 func NewPingHandler(service service.MetricsService) *PingHandler {
 	return &PingHandler{
 		service: service,
 	}
 }
 
+// PingPage checks database availability.
 func (h *PingHandler) PingPage(c *gin.Context) {
 
 	err := h.service.Check(c.Request.Context())

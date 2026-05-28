@@ -12,6 +12,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/flags"
 )
 
+// Options contains application configuration values.
 type Options struct {
 	Address         flags.NetAddress
 	StoreInterval   flags.SecondsStoreInterval
@@ -19,8 +20,11 @@ type Options struct {
 	Restore         flags.Restore
 	DatabaseDSN     flags.DatabaseDSN
 	Key             flags.Key
+	AuditFile       flags.AuditFile
+	AuditURL        flags.AuditURL
 }
 
+// GetOptions parses application configuration from flags and environment variables.
 func GetOptions() Options {
 
 	const fileName = "metrics.txt"
@@ -37,6 +41,8 @@ func GetOptions() Options {
 		Restore:         false,
 		DatabaseDSN:     "",
 		Key:             "",
+		AuditFile:       "",
+		AuditURL:        "",
 	}
 
 	parseFlags(&options)
@@ -58,6 +64,7 @@ func GetOptions() Options {
 
 }
 
+// parseFlags parses command-line flags.
 func parseFlags(options *Options) {
 
 	flag.Var(&options.Address, "a", "net address host:port")
@@ -66,11 +73,14 @@ func parseFlags(options *Options) {
 	flag.Var(&options.Restore, "r", "restore file (true/false)")
 	flag.Var(&options.DatabaseDSN, "d", "postgres dsn (format: postgres://user:password@host:port/dbname)")
 	flag.Var(&options.Key, "k", "hash key")
+	flag.Var(&options.AuditFile, "audit-file", "audit file path")
+	flag.Var(&options.AuditURL, "audit-url", "audit url")
 
 	flag.Parse()
 
 }
 
+// parseEnv parses environment variables.
 func parseEnv(options *Options) error {
 
 	if addrStr, ok := os.LookupEnv("ADDRESS"); ok {
@@ -112,6 +122,20 @@ func parseEnv(options *Options) error {
 		err := options.Key.Set(keyStr)
 		if err != nil {
 			return fmt.Errorf("wrong value of KEY: %w", err)
+		}
+	}
+
+	if auditFileStr, ok := os.LookupEnv("AUDIT_FILE"); ok {
+		err := options.AuditFile.Set(auditFileStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of AUDIT_FILE: %w", err)
+		}
+	}
+
+	if auditURLStr, ok := os.LookupEnv("AUDIT_URL"); ok {
+		err := options.AuditURL.Set(auditURLStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of AUDIT_URL: %w", err)
 		}
 	}
 

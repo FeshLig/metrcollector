@@ -17,16 +17,19 @@ const (
 	counterStr = "counter"
 )
 
+// PostgresStorage stores metrics in PostgreSQL database.
 type PostgresStorage struct {
 	db *pgxpool.Pool
 }
 
+// NewPostgresStorage creates new PostgreSQL storage instance.
 func NewPostgresStorage(db *Postgres) *PostgresStorage {
 	return &PostgresStorage{
 		db: db.pool,
 	}
 }
 
+// SetGauge stores gauge metric value in database.
 func (p *PostgresStorage) SetGauge(ctx context.Context, name string, value metric.Gauge) error {
 	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx,
@@ -40,6 +43,7 @@ func (p *PostgresStorage) SetGauge(ctx context.Context, name string, value metri
 	})
 }
 
+// AddCounter increments counter metric value in database.
 func (p *PostgresStorage) AddCounter(ctx context.Context, name string, value metric.Counter) error {
 	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx,
@@ -53,6 +57,7 @@ func (p *PostgresStorage) AddCounter(ctx context.Context, name string, value met
 	})
 }
 
+// GetGauge returns gauge metric value from database.
 func (p *PostgresStorage) GetGauge(ctx context.Context, name string) (metric.Gauge, bool) {
 
 	var gauge float64
@@ -72,6 +77,7 @@ func (p *PostgresStorage) GetGauge(ctx context.Context, name string) (metric.Gau
 	return metric.Gauge(gauge), true
 }
 
+// GetCounter returns counter metric value from database.
 func (p *PostgresStorage) GetCounter(ctx context.Context, name string) (metric.Counter, bool) {
 
 	var counter int64
@@ -91,6 +97,7 @@ func (p *PostgresStorage) GetCounter(ctx context.Context, name string) (metric.C
 	return metric.Counter(counter), true
 }
 
+// SetCounter stores counter metric value in database.
 func (p *PostgresStorage) SetCounter(ctx context.Context, name string, value metric.Counter) error {
 	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
 		_, err := tx.Exec(ctx,
@@ -103,6 +110,7 @@ func (p *PostgresStorage) SetCounter(ctx context.Context, name string, value met
 	})
 }
 
+// SnapshotGauges returns snapshot of all gauge metrics from database.
 func (p *PostgresStorage) SnapshotGauges(ctx context.Context) map[string]metric.Gauge {
 
 	var result map[string]metric.Gauge
@@ -143,6 +151,7 @@ func (p *PostgresStorage) SnapshotGauges(ctx context.Context) map[string]metric.
 
 }
 
+// SnapshotCounters returns snapshot of all counter metrics from database.
 func (p *PostgresStorage) SnapshotCounters(ctx context.Context) map[string]metric.Counter {
 
 	var result map[string]metric.Counter
@@ -179,6 +188,7 @@ func (p *PostgresStorage) SnapshotCounters(ctx context.Context) map[string]metri
 
 }
 
+// SetMetrics stores multiple metrics in single transaction.
 func (p *PostgresStorage) SetMetrics(ctx context.Context, gauges map[string]metric.Gauge, counters map[string]metric.Counter) error {
 
 	return p.withTxRetry(ctx, func(tx pgx.Tx) error {
@@ -222,6 +232,7 @@ func (p *PostgresStorage) SetMetrics(ctx context.Context, gauges map[string]metr
 
 }
 
+// SnapshotMetrics returns snapshots of all stored metrics.
 func (p *PostgresStorage) SnapshotMetrics(ctx context.Context) (map[string]metric.Gauge, map[string]metric.Counter) {
 	gauges := p.SnapshotGauges(ctx)
 	counters := p.SnapshotCounters(ctx)
@@ -229,6 +240,7 @@ func (p *PostgresStorage) SnapshotMetrics(ctx context.Context) (map[string]metri
 	return gauges, counters
 }
 
+// withTxRetry executes transaction with retry on retriable errors.
 func (p *PostgresStorage) withTxRetry(ctx context.Context, fn func(pgx.Tx) error) error {
 
 	const maxRetries = 3
@@ -304,6 +316,7 @@ func (p *PostgresStorage) withTxRetry(ctx context.Context, fn func(pgx.Tx) error
 	return lastErr
 }
 
+// isRetriable reports whether error can be retried.
 func isRetriable(err error) bool {
 	var pgErr *pgconn.PgError
 
@@ -314,6 +327,7 @@ func isRetriable(err error) bool {
 	return false
 }
 
+// Check verifies database availability.
 func (p *PostgresStorage) Check(ctx context.Context) error {
 	return p.db.Ping(ctx)
 }

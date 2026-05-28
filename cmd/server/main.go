@@ -5,12 +5,14 @@ import (
 	"log"
 	"time"
 
+	"github.com/FeshLig/metrcollector/internal/audit"
 	"github.com/FeshLig/metrcollector/internal/config"
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/persister"
 	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/FeshLig/metrcollector/internal/router"
 	"github.com/FeshLig/metrcollector/internal/service"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -29,12 +31,18 @@ func run() error {
 
 	cfg := config.GetOptions()
 
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return err
+	}
+	defer logger.Sync()
+
 	ctx, cancel := newStartupContext()
 	defer cancel()
 
 	if cfg.DatabaseDSN.String() != "" {
 
-		s, db, err := newDB(ctx, cfg)
+		postgres_storage, db, err := newDB(ctx, cfg)
 		if err != nil {
 			return err
 		}
@@ -43,7 +51,7 @@ func run() error {
 		}
 
 		persister = nil
-		storage = s
+		storage = postgres_storage
 
 	} else {
 
@@ -55,9 +63,15 @@ func run() error {
 		defer persister.Stop()
 	}
 
-	service := NewService(cfg, storage, persister)
-	handlers := handler.NewHandlers(service)
-	router := router.NewRouter(handlers, cfg)
+	auditPublisher, closeAudit, err := newAudit(cfg)
+	if err != nil {
+		return err
+	}
+	defer closeAudit()
+
+	service := newService(cfg, storage, persister)
+	handlers := handler.NewHandlers(service, auditPublisher)
+	router := router.NewRouter(handlers, cfg, logger)
 
 	if err := router.Run(cfg.Address.String()); err != nil {
 		return err
@@ -65,6 +79,41 @@ func run() error {
 
 	return nil
 
+}
+
+func newAudit(cfg config.Options) (*audit.Publisher, func() error, error) {
+	publisher := audit.NewPublisher()
+
+	var closers []func() error
+
+	if cfg.AuditFile.String() != "" {
+		fileObserver, err := audit.NewFileObserver(string(cfg.AuditFile))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		closers = append(closers, fileObserver.Close)
+
+		publisher.Subscribe(fileObserver)
+	}
+
+	if cfg.AuditURL.String() != "" {
+		httpObserver := audit.NewHTTPObserver(string(cfg.AuditURL))
+
+		publisher.Subscribe(httpObserver)
+	}
+
+	closeFn := func() error {
+		for _, closer := range closers {
+			if err := closer(); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	return publisher, closeFn, nil
 }
 
 func newStartupContext() (context.Context, context.CancelFunc) {
@@ -114,7 +163,7 @@ func newPersister(cfg config.Options, storage repository.Storage) (*persister.Fi
 
 }
 
-func NewService(cfg config.Options, storage repository.Storage, persister *persister.FilePersister) service.MetricsService {
+func newService(cfg config.Options, storage repository.Storage, persister *persister.FilePersister) service.MetricsService {
 
 	service := service.NewMetricService(
 		storage,

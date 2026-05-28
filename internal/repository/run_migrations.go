@@ -6,6 +6,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
+// RunMigrations applies all available database migrations.
 func RunMigrations(dsn string) error {
 
 	const migrationsPth = "file://migrations"

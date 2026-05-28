@@ -8,23 +8,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// RootHandler handles requests to the main page.
 type RootHandler struct {
 	service service.MetricsService
 }
 
+// NewRootHandler creates a new RootHandler instance.
 func NewRootHandler(s service.MetricsService) *RootHandler {
 	return &RootHandler{
 		service: s,
 	}
 }
 
+// RootPage renders page with all collected metrics.
 func (h *RootHandler) RootPage(c *gin.Context) {
-
-	gauges := make(map[string]metric.Gauge)
-	counters := make(map[string]metric.Counter)
 
 	gaugesMetr := h.service.SnapshotGaugeMetrics()
 	countersMetr := h.service.SnapshotCounterMetrics()
+
+	gauges := make(map[string]metric.Gauge, len(gaugesMetr))
+	counters := make(map[string]metric.Counter, len(countersMetr))
 
 	for _, value := range gaugesMetr {
 		gauges[value.ID] = metric.Gauge(*value.Value)

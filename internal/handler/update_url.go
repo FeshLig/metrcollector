@@ -3,22 +3,29 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/FeshLig/metrcollector/internal/audit"
 	"github.com/FeshLig/metrcollector/internal/dto"
 	"github.com/FeshLig/metrcollector/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
+// UpdateURLHandler handles metric updates from URL parameters.
 type UpdateURLHandler struct {
 	service service.MetricsService
+	audit   *audit.Publisher
 }
 
-func NewUpdateURLHandler(s service.MetricsService) *UpdateURLHandler {
+// NewUpdateURLHandler creates a new UpdateURLHandler instance.
+func NewUpdateURLHandler(s service.MetricsService, audit *audit.Publisher) *UpdateURLHandler {
 	return &UpdateURLHandler{
 		service: s,
+		audit:   audit,
 	}
 }
 
+// UpdateFromURL updates metric value from URL parameters.
 func (h *UpdateURLHandler) UpdateFromURL(c *gin.Context) {
 
 	metricType := c.Param("type")
@@ -59,6 +66,16 @@ func (h *UpdateURLHandler) UpdateFromURL(c *gin.Context) {
 		c.String(http.StatusBadRequest, err.Error())
 		return
 	}
+
+	event := audit.Event{
+		Timestamp: time.Now().Unix(),
+		Metrics: []string{
+			metric.ID,
+		},
+		IPAddress: c.ClientIP(),
+	}
+
+	h.audit.Notify(event)
 
 	c.Status(http.StatusOK)
 

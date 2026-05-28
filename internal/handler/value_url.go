@@ -9,16 +9,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ValueURLHandler handles metric value requests from URL parameters.
 type ValueURLHandler struct {
 	service service.MetricsService
 }
 
+// NewValueURLHandler creates a new ValueURLHandler instance.
 func NewValueURLHandler(s service.MetricsService) *ValueURLHandler {
 	return &ValueURLHandler{
 		service: s,
 	}
 }
 
+// ValueFromURL returns metric value from URL parameters.
 func (h *ValueURLHandler) ValueFromURL(c *gin.Context) {
 
 	name := c.Param("name")
