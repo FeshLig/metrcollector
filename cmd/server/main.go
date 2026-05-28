@@ -42,7 +42,9 @@ func run() error {
 
 	if cfg.DatabaseDSN.String() != "" {
 
-		postgres_storage, db, err := newDB(ctx, cfg)
+		var postgresStorage *repository.PostgresStorage
+		var db *repository.Postgres
+		postgresStorage, db, err = newDB(ctx, cfg)
 		if err != nil {
 			return err
 		}
@@ -51,12 +53,12 @@ func run() error {
 		}
 
 		persister = nil
-		storage = postgres_storage
+		storage = postgresStorage
 
 	} else {
 
 		storage = repository.NewMemStorage()
-		persister, err := newPersister(cfg, storage)
+		persister, err = newPersister(cfg, storage)
 		if err != nil {
 			return err
 		}

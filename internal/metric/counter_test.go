@@ -24,6 +24,6 @@ func TestCounter_Set(t *testing.T) {
 
 func TestCounter_Immutable(t *testing.T) {
 	c := metric.Counter(10)
-	c.AddCounter(5)
+	_ = c.AddCounter(5)
 	assert.Equal(t, metric.Counter(10), c)
 }

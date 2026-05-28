@@ -1,3 +1,5 @@
+// Package router configures HTTP routes
+// and middleware for the application.
 package router
 
 import (

@@ -7,7 +7,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/service"
 )
 
-// Возвращает http код и msg
+// HTTPStatusError returns http code and msg
 func HTTPStatusError(err error) (int, string) {
 	var svcErr *service.ServiceError
 	if errors.As(err, &svcErr) {

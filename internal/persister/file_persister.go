@@ -1,3 +1,5 @@
+// Package persister provides file persistence
+// for application metrics.
 package persister
 
 import (

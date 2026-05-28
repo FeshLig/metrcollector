@@ -14,6 +14,6 @@ func TestGauge_Set(t *testing.T) {
 
 func TestGauge_Immutable(t *testing.T) {
 	g := metric.Gauge(1.5)
-	g.SetGauge(99.9)
+	_ = g.SetGauge(99.9)
 	assert.InDelta(t, 1.5, float64(g), 1e-9)
 }

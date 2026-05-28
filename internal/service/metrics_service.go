@@ -1,3 +1,5 @@
+// Package service contains business logic
+// for metric processing and storage operations.
 package service
 
 import (

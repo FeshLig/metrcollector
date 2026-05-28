@@ -1,3 +1,5 @@
+// Package repository provides metric storage
+// implementations and database access.
 package repository
 
 import (

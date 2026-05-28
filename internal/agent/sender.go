@@ -1,3 +1,5 @@
+// Package agent implements metric collection
+// and metric delivery to the server.
 package agent
 
 import (
@@ -64,18 +66,18 @@ func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key s
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 
-	if _, err := gz.Write(body); err != nil {
+	if _, err = gz.Write(body); err != nil {
 		return fmt.Errorf("gzip write: %w", err)
 	}
-	if err := gz.Close(); err != nil {
+	if err = gz.Close(); err != nil {
 		return fmt.Errorf("gzip close: %w", err)
 	}
 
 	url := fmt.Sprintf("%s/updates/", h.BaseURL)
 
 	resp, err := h.Client.Do(ctx, func() (*http.Request, error) {
-
-		req, err := http.NewRequest(
+		var req *http.Request
+		req, err = http.NewRequest(
 			"POST",
 			url,
 			bytes.NewReader(buf.Bytes()),
