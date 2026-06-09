@@ -8,6 +8,7 @@ import (
 )
 
 // MemStorage stores metrics in memory.
+// generate:reset
 type MemStorage struct {
 	mu       sync.Mutex
 	gauges   map[string]metric.Gauge

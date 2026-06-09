@@ -1,3 +1,5 @@
+// Package metric provides metric types
+// and metric-related operations.
 package metric
 
 // Gauge represents gauge metric value.

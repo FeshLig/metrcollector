@@ -1,3 +1,5 @@
+// Package dto contains data transfer objects
+// used by HTTP handlers and services.
 package dto
 
 const (

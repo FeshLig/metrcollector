@@ -1,3 +1,5 @@
+// Package config contains application configuration
+// structures and initialization logic.
 package config
 
 import (

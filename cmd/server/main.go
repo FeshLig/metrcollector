@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -15,13 +16,39 @@ import (
 	"go.uber.org/zap"
 )
 
+var buildVersion string
+var buildDate string
+var buildCommit string
+
 func main() {
 
+	printBuildInfo()
 	err := run()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+}
+
+func printBuildInfo() {
+	version := buildVersion
+	if version == "" {
+		version = "N/A"
+	}
+
+	date := buildDate
+	if date == "" {
+		date = "N/A"
+	}
+
+	commit := buildCommit
+	if commit == "" {
+		commit = "N/A"
+	}
+
+	fmt.Printf("Build version: %s\n", version)
+	fmt.Printf("Build date: %s\n", date)
+	fmt.Printf("Build commit: %s\n", commit)
 }
 
 func run() error {
@@ -42,7 +69,9 @@ func run() error {
 
 	if cfg.DatabaseDSN.String() != "" {
 
-		postgres_storage, db, err := newDB(ctx, cfg)
+		var postgresStorage *repository.PostgresStorage
+		var db *repository.Postgres
+		postgresStorage, db, err = newDB(ctx, cfg)
 		if err != nil {
 			return err
 		}
@@ -51,12 +80,12 @@ func run() error {
 		}
 
 		persister = nil
-		storage = postgres_storage
+		storage = postgresStorage
 
 	} else {
 
 		storage = repository.NewMemStorage()
-		persister, err := newPersister(cfg, storage)
+		persister, err = newPersister(cfg, storage)
 		if err != nil {
 			return err
 		}

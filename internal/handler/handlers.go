@@ -1,3 +1,5 @@
+// Package handler contains HTTP handlers
+// for metric operations.
 package handler
 
 import (

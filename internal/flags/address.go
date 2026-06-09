@@ -1,3 +1,5 @@
+// Package flags contains command-line flag definitions
+// and environment configuration helpers.
 package flags
 
 import (
