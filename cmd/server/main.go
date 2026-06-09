@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/FeshLig/metrcollector/internal/router"
 	"github.com/FeshLig/metrcollector/internal/service"
+	"github.com/FeshLig/metrcollector/pkg/crypto"
 	"go.uber.org/zap"
 )
 
@@ -98,9 +100,17 @@ func run() error {
 	}
 	defer closeAudit()
 
+	var privateKey *rsa.PrivateKey
+	if keyPath := cfg.CryptoKey.String(); keyPath != "" {
+		privateKey, err = crypto.LoadPrivateKey(keyPath)
+		if err != nil {
+			return fmt.Errorf("load private key: %w", err)
+		}
+	}
+
 	service := newService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, auditPublisher)
-	router := router.NewRouter(handlers, cfg, logger)
+	router := router.NewRouter(handlers, cfg, logger, privateKey)
 
 	if err := router.Run(cfg.Address.String()); err != nil {
 		return err

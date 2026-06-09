@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -16,11 +17,12 @@ import (
 
 	"github.com/FeshLig/metrcollector/internal/dto"
 	"github.com/FeshLig/metrcollector/internal/repository"
+	"github.com/FeshLig/metrcollector/pkg/crypto"
 )
 
 // MetricsSender describes metric batch sender.
 type MetricsSender interface {
-	SendBatch(ctx context.Context, metrics []dto.Metrics, key string) error
+	SendBatch(ctx context.Context, metrics []dto.Metrics, key string, publicKey *rsa.PublicKey) error
 }
 
 // Doer describes HTTP client with retry support.
@@ -43,7 +45,7 @@ func NewSender(url string, client Doer) *HTTPSender {
 }
 
 // SendBatch sends metric batch to server.
-func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key string) error {
+func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key string, publicKey *rsa.PublicKey) error {
 
 	var hash string
 
@@ -57,10 +59,10 @@ func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key s
 	}
 
 	if key != "" {
-		h := sha256.New()
-		h.Write(body)
-		h.Write([]byte(key))
-		hash = hex.EncodeToString(h.Sum(nil))
+		hh := sha256.New()
+		hh.Write(body)
+		hh.Write([]byte(key))
+		hash = hex.EncodeToString(hh.Sum(nil))
 	}
 
 	var buf bytes.Buffer
@@ -73,6 +75,14 @@ func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key s
 		return fmt.Errorf("gzip close: %w", err)
 	}
 
+	payload := buf.Bytes()
+	if publicKey != nil {
+		payload, err = crypto.Encrypt(publicKey, payload)
+		if err != nil {
+			return fmt.Errorf("encrypt body: %w", err)
+		}
+	}
+
 	url := fmt.Sprintf("%s/updates/", h.BaseURL)
 
 	resp, err := h.Client.Do(ctx, func() (*http.Request, error) {
@@ -80,14 +90,18 @@ func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key s
 		req, err = http.NewRequest(
 			"POST",
 			url,
-			bytes.NewReader(buf.Bytes()),
+			bytes.NewReader(payload),
 		)
 		if err != nil {
 			return nil, err
 		}
 
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Content-Encoding", "gzip")
+		if publicKey == nil {
+			req.Header.Set("Content-Encoding", "gzip")
+		} else {
+			req.Header.Set("X-Encrypted", "rsa-oaep")
+		}
 		if key != "" {
 			req.Header.Set("HashSHA256", hash)
 		}
@@ -143,6 +157,7 @@ func worker(
 	jobs <-chan []dto.Metrics,
 	sender *HTTPSender,
 	key string,
+	publicKey *rsa.PublicKey,
 ) {
 	for {
 		select {
@@ -153,7 +168,7 @@ func worker(
 			if !ok {
 				return
 			}
-			sender.SendBatch(ctx, metrics, key)
+			sender.SendBatch(ctx, metrics, key, publicKey)
 		}
 	}
 }
@@ -170,6 +185,17 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 	collector := NewMetricCollector(storage)
 	key := options.Key.String()
 
+	// Загружаем публичный ключ, если задан путь
+	var publicKey *rsa.PublicKey
+	if keyPath := options.CryptoKey.String(); keyPath != "" {
+		var err error
+		publicKey, err = crypto.LoadPublicKey(keyPath)
+		if err != nil {
+			// Продолжаем без шифрования, логируем ошибку
+			fmt.Printf("failed to load public key: %v\n", err)
+		}
+	}
+
 	pollTicker := time.NewTicker(options.PollInterval.Duration)
 	reportTicker := time.NewTicker(options.ReportInterval.Duration)
 	defer pollTicker.Stop()
@@ -182,7 +208,7 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 	var mu sync.Mutex
 
 	for i := 0; i < int(options.RateLimit); i++ {
-		go worker(ctx, jobs, sender, key)
+		go worker(ctx, jobs, sender, key, publicKey)
 	}
 
 	go func() {

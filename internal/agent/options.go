@@ -16,6 +16,7 @@ type Options struct {
 	PollInterval   flags.SecondsDuration
 	Key            flags.Key
 	RateLimit      flags.RateLimit
+	CryptoKey      flags.CryptoKey
 }
 
 // GetOptions parses agent configuration from flags and environment variables.
@@ -53,6 +54,7 @@ func parseFlags(options *Options) {
 	flag.Var(&options.PollInterval, "p", "metrics polling frequency")
 	flag.Var(&options.Key, "k", "hash key")
 	flag.Var(&options.RateLimit, "l", "rate limit")
+	flag.Var(&options.CryptoKey, "crypto-key", "path to RSA public key file")
 
 	flag.Parse()
 
@@ -86,6 +88,13 @@ func parseEnv(options *Options) error {
 		err := options.RateLimit.Set(rateStr)
 		if err != nil {
 			return fmt.Errorf("wrong value of RATE_LIMIT: %w", err)
+		}
+	}
+
+	if cryptoKeyStr, ok := os.LookupEnv("CRYPTO_KEY"); ok {
+		err := options.CryptoKey.Set(cryptoKeyStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of CRYPTO_KEY: %w", err)
 		}
 	}
 

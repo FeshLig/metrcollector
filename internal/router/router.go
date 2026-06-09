@@ -3,6 +3,8 @@
 package router
 
 import (
+	"crypto/rsa"
+
 	"github.com/FeshLig/metrcollector/internal/config"
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/middleware"
@@ -11,10 +13,10 @@ import (
 )
 
 // NewRouter creates and configures HTTP router.
-func NewRouter(handlers *handler.Handlers, cfg config.Options, logger *zap.Logger) *gin.Engine {
+func NewRouter(handlers *handler.Handlers, cfg config.Options, logger *zap.Logger, privateKey *rsa.PrivateKey) *gin.Engine {
 
 	r := gin.New()
-	r.Use(middleware.Logger(logger), middleware.Gzip(), middleware.Hash(cfg.Key.String()), gin.Recovery())
+	r.Use(middleware.Logger(logger), middleware.Decrypt(privateKey), middleware.Gzip(), middleware.Hash(cfg.Key.String()), gin.Recovery())
 
 	if gin.Mode() != gin.TestMode {
 		r.LoadHTMLGlob("./internal/templates/*")

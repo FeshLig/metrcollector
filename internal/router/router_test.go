@@ -51,6 +51,7 @@ func setupRouter(t *testing.T) *gin.Engine {
 		handlers,
 		cfg,
 		logger,
+		nil,
 	)
 }
 

@@ -24,6 +24,7 @@ type Options struct {
 	Key             flags.Key
 	AuditFile       flags.AuditFile
 	AuditURL        flags.AuditURL
+	CryptoKey       flags.CryptoKey
 }
 
 // GetOptions parses application configuration from flags and environment variables.
@@ -77,6 +78,7 @@ func parseFlags(options *Options) {
 	flag.Var(&options.Key, "k", "hash key")
 	flag.Var(&options.AuditFile, "audit-file", "audit file path")
 	flag.Var(&options.AuditURL, "audit-url", "audit url")
+	flag.Var(&options.CryptoKey, "crypto-key", "path to RSA private key file")
 
 	flag.Parse()
 
@@ -138,6 +140,13 @@ func parseEnv(options *Options) error {
 		err := options.AuditURL.Set(auditURLStr)
 		if err != nil {
 			return fmt.Errorf("wrong value of AUDIT_URL: %w", err)
+		}
+	}
+
+	if cryptoKeyStr, ok := os.LookupEnv("CRYPTO_KEY"); ok {
+		err := options.CryptoKey.Set(cryptoKeyStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of CRYPTO_KEY: %w", err)
 		}
 	}
 
