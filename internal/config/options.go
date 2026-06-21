@@ -48,6 +48,18 @@ func GetOptions() Options {
 		AuditURL:        "",
 	}
 
+	configPath := findConfigPath()
+	if configPath != "" {
+		cfg, err := parseConfigFile(configPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to read config file: %v\n", err)
+		} else {
+			if err := applyConfigFile(&options, cfg); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to apply config file: %v\n", err)
+			}
+		}
+	}
+
 	parseFlags(&options)
 	parseEnv(&options)
 
@@ -79,6 +91,9 @@ func parseFlags(options *Options) {
 	flag.Var(&options.AuditFile, "audit-file", "audit file path")
 	flag.Var(&options.AuditURL, "audit-url", "audit url")
 	flag.Var(&options.CryptoKey, "crypto-key", "path to RSA private key file")
+
+	flag.String("c", "", "path to config file")
+	flag.String("config", "", "path to config file")
 
 	flag.Parse()
 
@@ -152,4 +167,27 @@ func parseEnv(options *Options) error {
 
 	return nil
 
+}
+
+func findConfigPath() string {
+
+	if path, ok := os.LookupEnv("CONFIG"); ok && path != "" {
+		return path
+	}
+	args := os.Args[1:]
+	for i, arg := range args {
+		switch arg {
+		case "-c", "-config", "--c", "--config":
+			if i+1 < len(args) {
+				return args[i+1]
+			}
+
+			for _, prefix := range []string{"-c=", "--c=", "-config=", "--config="} {
+				if len(arg) > len(prefix) && arg[:len(prefix)] == prefix {
+					return arg[len(prefix):]
+				}
+			}
+		}
+	}
+	return ""
 }
