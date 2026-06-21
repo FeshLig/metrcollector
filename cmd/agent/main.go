@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/FeshLig/metrcollector/internal/agent"
+	"github.com/FeshLig/metrcollector/internal/buildinfo"
 	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
@@ -17,7 +18,7 @@ var buildCommit string
 
 func main() {
 
-	printBuildInfo()
+	buildinfo.Print(buildVersion, buildDate, buildCommit)
 
 	options := agent.GetOptions()
 

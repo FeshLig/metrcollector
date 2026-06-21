@@ -67,6 +67,14 @@ func run(pass *analysis.Pass) (interface{}, error) {
 					)
 				}
 
+				ident, ok := call.Fun.(*ast.Ident)
+				if ok && ident.Name == "panic" {
+					pass.Reportf(
+						call.Pos(),
+						"direct call to panic inside main function is forbidden",
+					)
+				}
+
 				return true
 			})
 

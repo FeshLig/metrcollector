@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/audit"
+	"github.com/FeshLig/metrcollector/internal/buildinfo"
 	"github.com/FeshLig/metrcollector/internal/config"
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/persister"
@@ -29,33 +30,12 @@ var buildCommit string
 
 func main() {
 
-	printBuildInfo()
+	buildinfo.Print(buildVersion, buildDate, buildCommit)
 	err := run()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-}
-
-func printBuildInfo() {
-	version := buildVersion
-	if version == "" {
-		version = "N/A"
-	}
-
-	date := buildDate
-	if date == "" {
-		date = "N/A"
-	}
-
-	commit := buildCommit
-	if commit == "" {
-		commit = "N/A"
-	}
-
-	fmt.Printf("Build version: %s\n", version)
-	fmt.Printf("Build date: %s\n", date)
-	fmt.Printf("Build commit: %s\n", commit)
 }
 
 func run() error {
