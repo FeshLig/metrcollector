@@ -3,8 +3,13 @@ package main
 import (
 	"context"
 	"crypto/rsa"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/audit"
@@ -110,10 +115,43 @@ func run() error {
 
 	service := newService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, auditPublisher)
-	router := router.NewRouter(handlers, cfg, logger, privateKey)
+	ginRouter := router.NewRouter(handlers, cfg, logger, privateKey)
 
-	if err := router.Run(cfg.Address.String()); err != nil {
+	serverErr := make(chan error, 1)
+	srv := &http.Server{
+		Addr:    cfg.Address.String(),
+		Handler: ginRouter,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	select {
+	case err := <-serverErr:
 		return err
+	case sig := <-sigChan:
+		logger.Info("received signal, shutting down", zap.String("signal", sig.String()))
+	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("server shutdown: %w", err)
+	}
+
+	if persister != nil {
+		if err := persister.Save(); err != nil {
+			return fmt.Errorf("final save: %w", err)
+		}
+		logger.Info("metrics flushed to disk")
 	}
 
 	return nil

@@ -158,11 +158,24 @@ func worker(
 	sender *HTTPSender,
 	key string,
 	publicKey *rsa.PublicKey,
+	wg *sync.WaitGroup,
 ) {
+	defer wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			// drain remaining jobs before exit
+			for {
+				select {
+				case metrics, ok := <-jobs:
+					if !ok {
+						return
+					}
+					sender.SendBatch(context.Background(), metrics, key, publicKey)
+				default:
+					return
+				}
+			}
 
 		case metrics, ok := <-jobs:
 			if !ok {
@@ -185,13 +198,11 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 	collector := NewMetricCollector(storage)
 	key := options.Key.String()
 
-	// Загружаем публичный ключ, если задан путь
 	var publicKey *rsa.PublicKey
 	if keyPath := options.CryptoKey.String(); keyPath != "" {
 		var err error
 		publicKey, err = crypto.LoadPublicKey(keyPath)
 		if err != nil {
-			// Продолжаем без шифрования, логируем ошибку
 			fmt.Printf("failed to load public key: %v\n", err)
 		}
 	}
@@ -206,9 +217,11 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 
 	var pollCount int64
 	var mu sync.Mutex
+	var wg sync.WaitGroup
 
 	for i := 0; i < int(options.RateLimit); i++ {
-		go worker(ctx, jobs, sender, key, publicKey)
+		wg.Add(1)
+		go worker(ctx, jobs, sender, key, publicKey, &wg)
 	}
 
 	go func() {
@@ -264,5 +277,23 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 	}()
 
 	<-ctx.Done()
+
+	metrics := buildBatch(storage)
+	if len(metrics) > 0 {
+		var finalPollCount int64
+		mu.Lock()
+		finalPollCount = pollCount
+		mu.Unlock()
+		metrics = append(metrics, dto.Metrics{
+			ID:    "PollCount",
+			MType: "counter",
+			Delta: &finalPollCount,
+		})
+		jobs <- metrics
+	}
+
+	close(jobs)
+
+	wg.Wait()
 
 }
