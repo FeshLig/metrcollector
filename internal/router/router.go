@@ -16,7 +16,16 @@ import (
 func NewRouter(handlers *handler.Handlers, cfg config.Options, logger *zap.Logger, privateKey *rsa.PrivateKey) *gin.Engine {
 
 	r := gin.New()
-	r.Use(middleware.Logger(logger), middleware.Decrypt(privateKey), middleware.Gzip(), middleware.Hash(cfg.Key.String()), gin.Recovery())
+
+	middlewares := []gin.HandlerFunc{
+		middleware.Logger(logger),
+	}
+	if privateKey != nil {
+		middlewares = append(middlewares, middleware.Decrypt(privateKey))
+	}
+	middlewares = append(middlewares, middleware.Gzip(), middleware.Hash(cfg.Key.String()), gin.Recovery())
+
+	r.Use(middlewares...)
 
 	if gin.Mode() != gin.TestMode {
 		r.LoadHTMLGlob("./internal/templates/*")

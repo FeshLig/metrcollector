@@ -93,6 +93,16 @@ func run() error {
 		}
 	}
 
+	if persister != nil {
+		defer func() {
+			if err := persister.Save(); err != nil {
+				logger.Error("final save failed", zap.Error(err))
+			} else {
+				logger.Info("metrics flushed to disk")
+			}
+		}()
+	}
+
 	service := newService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, auditPublisher)
 	ginRouter := router.NewRouter(handlers, cfg, logger, privateKey)
@@ -125,13 +135,6 @@ func run() error {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("server shutdown: %w", err)
-	}
-
-	if persister != nil {
-		if err := persister.Save(); err != nil {
-			return fmt.Errorf("final save: %w", err)
-		}
-		logger.Info("metrics flushed to disk")
 	}
 
 	return nil

@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/flags"
@@ -176,15 +177,15 @@ func findConfigPath() string {
 	}
 	args := os.Args[1:]
 	for i, arg := range args {
-		switch arg {
-		case "-c", "-config", "--c", "--config":
+		if arg == "-c" || arg == "-config" || arg == "--c" || arg == "--config" {
 			if i+1 < len(args) {
 				return args[i+1]
 			}
-
-			for _, prefix := range []string{"-c=", "--c=", "-config=", "--config="} {
-				if len(arg) > len(prefix) && arg[:len(prefix)] == prefix {
-					return arg[len(prefix):]
+		}
+		for _, prefix := range []string{"-c=", "--c=", "-config=", "--config="} {
+			if strings.HasPrefix(arg, prefix) {
+				if val, ok := strings.CutPrefix(arg, prefix); ok && val != "" {
+					return val
 				}
 			}
 		}

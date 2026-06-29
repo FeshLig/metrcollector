@@ -153,7 +153,6 @@ func buildBatch(storage repository.Storage) []dto.Metrics {
 }
 
 func worker(
-	ctx context.Context,
 	jobs <-chan []dto.Metrics,
 	sender *HTTPSender,
 	key string,
@@ -161,28 +160,8 @@ func worker(
 	wg *sync.WaitGroup,
 ) {
 	defer wg.Done()
-	for {
-		select {
-		case <-ctx.Done():
-			// drain remaining jobs before exit
-			for {
-				select {
-				case metrics, ok := <-jobs:
-					if !ok {
-						return
-					}
-					sender.SendBatch(context.Background(), metrics, key, publicKey)
-				default:
-					return
-				}
-			}
-
-		case metrics, ok := <-jobs:
-			if !ok {
-				return
-			}
-			sender.SendBatch(ctx, metrics, key, publicKey)
-		}
+	for metrics := range jobs {
+		sender.SendBatch(context.Background(), metrics, key, publicKey)
 	}
 }
 
@@ -221,7 +200,7 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 
 	for i := 0; i < int(options.RateLimit); i++ {
 		wg.Add(1)
-		go worker(ctx, jobs, sender, key, publicKey, &wg)
+		go worker(jobs, sender, key, publicKey, &wg)
 	}
 
 	go func() {
