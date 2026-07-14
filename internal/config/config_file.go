@@ -13,6 +13,7 @@ type ServerConfigFile struct {
 	StoreFile     string `json:"store_file"`
 	DatabaseDSN   string `json:"database_dsn"`
 	CryptoKey     string `json:"crypto_key"`
+	TrustedSubnet string `json:"trusted_subnet"`
 }
 
 func parseConfigFile(path string) (*ServerConfigFile, error) {
@@ -59,6 +60,11 @@ func applyConfigFile(options *Options, cfg *ServerConfigFile) error {
 	}
 	if cfg.CryptoKey != "" {
 		if err := options.CryptoKey.Set(cfg.CryptoKey); err != nil {
+			return err
+		}
+	}
+	if cfg.TrustedSubnet != "" {
+		if err := options.TrustedSubnet.Set(cfg.TrustedSubnet); err != nil {
 			return err
 		}
 	}

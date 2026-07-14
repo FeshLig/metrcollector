@@ -26,6 +26,7 @@ type Options struct {
 	AuditFile       flags.AuditFile
 	AuditURL        flags.AuditURL
 	CryptoKey       flags.CryptoKey
+	TrustedSubnet   flags.TrustedSubnet
 }
 
 // GetOptions parses application configuration from flags and environment variables.
@@ -47,6 +48,9 @@ func GetOptions() Options {
 		Key:             "",
 		AuditFile:       "",
 		AuditURL:        "",
+		TrustedSubnet: flags.TrustedSubnet{
+			Raw: "",
+		},
 	}
 
 	configPath := findConfigPath()
@@ -95,6 +99,8 @@ func parseFlags(options *Options) {
 
 	flag.String("c", "", "path to config file")
 	flag.String("config", "", "path to config file")
+
+	flag.Var(&options.TrustedSubnet, "t", "trusted subnet in CIDR notation")
 
 	flag.Parse()
 
@@ -163,6 +169,12 @@ func parseEnv(options *Options) error {
 		err := options.CryptoKey.Set(cryptoKeyStr)
 		if err != nil {
 			return fmt.Errorf("wrong value of CRYPTO_KEY: %w", err)
+		}
+	}
+
+	if subnet, ok := os.LookupEnv("TRUSTED_SUBNET"); ok {
+		if err := options.TrustedSubnet.Set(subnet); err != nil {
+			return fmt.Errorf("wrong TRUSTED_SUBNET: %w", err)
 		}
 	}
 

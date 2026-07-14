@@ -23,7 +23,13 @@ func NewRouter(handlers *handler.Handlers, cfg config.Options, logger *zap.Logge
 	if privateKey != nil {
 		middlewares = append(middlewares, middleware.Decrypt(privateKey))
 	}
-	middlewares = append(middlewares, middleware.Gzip(), middleware.Hash(cfg.Key.String()), gin.Recovery())
+	middlewares = append(
+		middlewares,
+		middleware.Gzip(),
+		middleware.Hash(cfg.Key.String()),
+		middleware.TrustedSubnet(cfg.TrustedSubnet),
+		gin.Recovery(),
+	)
 
 	r.Use(middlewares...)
 
