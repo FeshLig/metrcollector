@@ -3,8 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/FeshLig/metrcollector/internal/agent"
+	"github.com/FeshLig/metrcollector/internal/buildinfo"
 	"github.com/FeshLig/metrcollector/internal/repository"
 )
 
@@ -14,13 +18,22 @@ var buildCommit string
 
 func main() {
 
-	printBuildInfo()
+	buildinfo.Print(buildVersion, buildDate, buildCommit)
 
 	options := agent.GetOptions()
 
 	storage := repository.NewMemStorage()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	go func() {
+		<-sigChan
+		cancel()
+	}()
 
 	agent.RunSender(ctx, storage, options)
 

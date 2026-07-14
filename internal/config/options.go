@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/flags"
@@ -24,6 +25,7 @@ type Options struct {
 	Key             flags.Key
 	AuditFile       flags.AuditFile
 	AuditURL        flags.AuditURL
+	CryptoKey       flags.CryptoKey
 }
 
 // GetOptions parses application configuration from flags and environment variables.
@@ -45,6 +47,18 @@ func GetOptions() Options {
 		Key:             "",
 		AuditFile:       "",
 		AuditURL:        "",
+	}
+
+	configPath := findConfigPath()
+	if configPath != "" {
+		cfg, err := parseConfigFile(configPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to read config file: %v\n", err)
+		} else {
+			if err := applyConfigFile(&options, cfg); err != nil {
+				fmt.Fprintf(os.Stderr, "failed to apply config file: %v\n", err)
+			}
+		}
 	}
 
 	parseFlags(&options)
@@ -77,6 +91,10 @@ func parseFlags(options *Options) {
 	flag.Var(&options.Key, "k", "hash key")
 	flag.Var(&options.AuditFile, "audit-file", "audit file path")
 	flag.Var(&options.AuditURL, "audit-url", "audit url")
+	flag.Var(&options.CryptoKey, "crypto-key", "path to RSA private key file")
+
+	flag.String("c", "", "path to config file")
+	flag.String("config", "", "path to config file")
 
 	flag.Parse()
 
@@ -141,6 +159,36 @@ func parseEnv(options *Options) error {
 		}
 	}
 
+	if cryptoKeyStr, ok := os.LookupEnv("CRYPTO_KEY"); ok {
+		err := options.CryptoKey.Set(cryptoKeyStr)
+		if err != nil {
+			return fmt.Errorf("wrong value of CRYPTO_KEY: %w", err)
+		}
+	}
+
 	return nil
 
+}
+
+func findConfigPath() string {
+
+	if path, ok := os.LookupEnv("CONFIG"); ok && path != "" {
+		return path
+	}
+	args := os.Args[1:]
+	for i, arg := range args {
+		if arg == "-c" || arg == "-config" || arg == "--c" || arg == "--config" {
+			if i+1 < len(args) {
+				return args[i+1]
+			}
+		}
+		for _, prefix := range []string{"-c=", "--c=", "-config=", "--config="} {
+			if strings.HasPrefix(arg, prefix) {
+				if val, ok := strings.CutPrefix(arg, prefix); ok && val != "" {
+					return val
+				}
+			}
+		}
+	}
+	return ""
 }

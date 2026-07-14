@@ -2,17 +2,25 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/FeshLig/metrcollector/internal/audit"
+	"github.com/FeshLig/metrcollector/internal/buildinfo"
 	"github.com/FeshLig/metrcollector/internal/config"
 	"github.com/FeshLig/metrcollector/internal/handler"
 	"github.com/FeshLig/metrcollector/internal/persister"
 	"github.com/FeshLig/metrcollector/internal/repository"
 	"github.com/FeshLig/metrcollector/internal/router"
 	"github.com/FeshLig/metrcollector/internal/service"
+	"github.com/FeshLig/metrcollector/pkg/crypto"
 	"go.uber.org/zap"
 )
 
@@ -22,33 +30,12 @@ var buildCommit string
 
 func main() {
 
-	printBuildInfo()
+	buildinfo.Print(buildVersion, buildDate, buildCommit)
 	err := run()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-}
-
-func printBuildInfo() {
-	version := buildVersion
-	if version == "" {
-		version = "N/A"
-	}
-
-	date := buildDate
-	if date == "" {
-		date = "N/A"
-	}
-
-	commit := buildCommit
-	if commit == "" {
-		commit = "N/A"
-	}
-
-	fmt.Printf("Build version: %s\n", version)
-	fmt.Printf("Build date: %s\n", date)
-	fmt.Printf("Build commit: %s\n", commit)
 }
 
 func run() error {
@@ -98,12 +85,56 @@ func run() error {
 	}
 	defer closeAudit()
 
+	var privateKey *rsa.PrivateKey
+	if keyPath := cfg.CryptoKey.String(); keyPath != "" {
+		privateKey, err = crypto.LoadPrivateKey(keyPath)
+		if err != nil {
+			return fmt.Errorf("load private key: %w", err)
+		}
+	}
+
+	if persister != nil {
+		defer func() {
+			if err := persister.Save(); err != nil {
+				logger.Error("final save failed", zap.Error(err))
+			} else {
+				logger.Info("metrics flushed to disk")
+			}
+		}()
+	}
+
 	service := newService(cfg, storage, persister)
 	handlers := handler.NewHandlers(service, auditPublisher)
-	router := router.NewRouter(handlers, cfg, logger)
+	ginRouter := router.NewRouter(handlers, cfg, logger, privateKey)
 
-	if err := router.Run(cfg.Address.String()); err != nil {
+	serverErr := make(chan error, 1)
+	srv := &http.Server{
+		Addr:    cfg.Address.String(),
+		Handler: ginRouter,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	select {
+	case err := <-serverErr:
 		return err
+	case sig := <-sigChan:
+		logger.Info("received signal, shutting down", zap.String("signal", sig.String()))
+	}
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("server shutdown: %w", err)
 	}
 
 	return nil
