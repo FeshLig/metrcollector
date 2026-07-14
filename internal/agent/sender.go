@@ -10,7 +10,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -34,13 +36,21 @@ type Doer interface {
 type HTTPSender struct {
 	BaseURL string
 	Client  Doer
+	RealIP  string
 }
 
 // NewSender creates new HTTP metrics sender.
 func NewSender(url string, client Doer) *HTTPSender {
+
+	ip, err := getLocalIP()
+	if err != nil {
+		ip = ""
+	}
+
 	return &HTTPSender{
 		BaseURL: url,
 		Client:  client,
+		RealIP:  ip,
 	}
 }
 
@@ -104,6 +114,10 @@ func (h *HTTPSender) SendBatch(ctx context.Context, metrics []dto.Metrics, key s
 		}
 		if key != "" {
 			req.Header.Set("HashSHA256", hash)
+		}
+
+		if h.RealIP != "" {
+			req.Header.Set("X-Real-IP", h.RealIP)
 		}
 
 		return req, nil
@@ -275,4 +289,31 @@ func RunSender(ctx context.Context, storage *repository.MemStorage, options Opti
 
 	wg.Wait()
 
+}
+
+func getLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if !ok {
+			continue
+		}
+
+		if ipNet.IP.IsLoopback() {
+			continue
+		}
+
+		ip := ipNet.IP.To4()
+		if ip == nil {
+			continue
+		}
+
+		return ip.String(), nil
+	}
+
+	return "", errors.New("no IPv4 found")
 }
